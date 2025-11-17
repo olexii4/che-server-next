@@ -1,0 +1,47 @@
+{
+  "name": "kubernetes-namespace-provisioner",
+  "version": "1.0.0",
+  "description": "TypeScript implementation of Kubernetes namespace provisioning API",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "dev": "ts-node src/index.ts",
+    "test": "jest",
+    "lint": "eslint src --ext .ts",
+    "license:check": "node .config/license-check.js",
+    "license:fix": "node .config/license-check.js --fix",
+    "pretest": "yarn license:check",
+    "prebuild": "yarn license:check"
+  },
+  "keywords": [
+    "kubernetes",
+    "namespace",
+    "provisioning",
+    "api"
+  ],
+  "author": "",
+  "license": "EPL-2.0",
+  "dependencies": {
+    "@fastify/cors": "^8.5.0",
+    "@fastify/swagger": "^8.14.0",
+    "@fastify/swagger-ui": "^3.0.0",
+    "@kubernetes/client-node": "^0.20.0",
+    "dotenv": "^16.3.1",
+    "fastify": "^4.26.0",
+    "yamljs": "^0.3.0"
+  },
+  "devDependencies": {
+    "@types/jest": "^29.5.11",
+    "@types/node": "^20.10.0",
+    "@types/yamljs": "^0.2.34",
+    "@typescript-eslint/eslint-plugin": "^6.13.0",
+    "@typescript-eslint/parser": "^6.13.0",
+    "eslint": "^8.54.0",
+    "glob": "^10.3.10",
+    "jest": "^29.7.0",
+    "ts-jest": "^29.1.1",
+    "ts-node": "^10.9.1",
+    "typescript": "^5.3.2"
+  }
+}
