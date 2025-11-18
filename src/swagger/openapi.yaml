@@ -32,7 +32,7 @@ info:
     url: https://www.eclipse.org/legal/epl-2.0/
 
 servers:
-  - url: http://localhost:3000
+  - url: http://localhost:8080
     description: Development server
   - url: https://api.example.com
     description: Production server
@@ -161,24 +161,49 @@ paths:
       description: |
         Create factory by providing map of parameters. Returns JSON with factory information.
         
-        This endpoint resolves a factory from various sources like:
-        - Raw devfile URLs
-        - Git repository URLs
-        - SCM provider URLs (GitHub, GitLab, Bitbucket, etc.)
+        This endpoint resolves a factory from various sources:
         
-        The resolver automatically detects the source type and creates appropriate factory.
+        ### Supported URL Types
+        - **Raw devfile URLs**: Direct links to devfile.yaml or .devfile.yaml files
+        - **Git repository URLs**: Repository URLs (with or without .git suffix)
+        - **Git clone URLs**: URLs ending with .git (e.g., `https://github.com/user/repo.git`)
+        - **Branch-specific URLs**: URLs pointing to specific branches
+        - **SCM providers**: GitHub, GitLab, Bitbucket, Azure DevOps, and GitHub Enterprise
+        
+        ### Automatic Devfile Detection
+        For Git repository URLs, the resolver automatically searches for devfile in this order:
+        1. `devfile.yaml`
+        2. `.devfile.yaml`
+        
+        You can configure additional filenames via `CHE_FACTORY_DEFAULT_DEVFILE_FILENAMES` environment variable.
         
         **Note**: This is a beta feature that may be significantly changed.
         
         ## How it works
         1. Accepts parameters (primarily a URL)
-        2. Finds appropriate resolver for the parameters
-        3. Fetches devfile or repository information
-        4. Creates factory with devfile v2 structure
-        5. Returns factory metadata with links
+        2. Detects URL type (raw devfile or repository)
+        3. For repository URLs, strips .git suffix and searches for devfile
+        4. Fetches devfile content from the detected location
+        5. Creates factory with devfile v2 structure
+        6. Returns factory metadata with links
         
         ## Validation
         Use `validate=true` query parameter to validate the factory according to acceptance rules.
+        
+        ## Examples
+        ```
+        # GitHub with .git
+        {"url": "https://github.com/eclipse-che/che-dashboard.git"}
+        
+        # GitHub without .git
+        {"url": "https://github.com/eclipse-che/che-server"}
+        
+        # With branch
+        {"url": "https://github.com/user/repo/tree/develop"}
+        
+        # Raw devfile
+        {"url": "https://raw.githubusercontent.com/user/repo/main/devfile.yaml"}
+        ```
       operationId: resolveFactory
       security:
         - BearerAuth: []
@@ -193,7 +218,13 @@ paths:
             default: false
       requestBody:
         required: true
-        description: Parameters provided to create factory (typically containing URL)
+        description: |
+          Parameters provided to create factory (typically containing URL).
+          
+          The URL can be:
+          - A direct devfile URL (raw file URL)
+          - A Git repository URL (automatically searches for devfile.yaml or .devfile.yaml)
+          - A Git clone URL ending with .git (automatically searches for devfile)
         content:
           application/json:
             schema:
@@ -202,17 +233,50 @@ paths:
                 url:
                   type: string
                   description: |
-                    URL pointing to a devfile. Must end with a valid devfile filename:
-                    - devfile.yaml
-                    - .devfile.yaml
-                  example: https://raw.githubusercontent.com/user/repo/main/devfile.yaml
+                    URL pointing to a devfile or Git repository. Supports:
+                    - Direct devfile URLs: https://raw.githubusercontent.com/user/repo/main/devfile.yaml
+                    - Repository URLs: https://github.com/user/repo
+                    - Clone URLs: https://github.com/user/repo.git
+                    - Branch-specific: https://github.com/user/repo/tree/branch
+                    
+                    For repository URLs, automatically tries: devfile.yaml, .devfile.yaml
+                  example: https://github.com/eclipse-che/che-dashboard.git
               additionalProperties:
                 type: string
             examples:
-              devfileYaml:
+              gitHubCloneUrl:
+                summary: GitHub repository with .git suffix
+                description: Automatically searches for devfile.yaml or .devfile.yaml in the repository
+                value:
+                  url: https://github.com/eclipse-che/che-dashboard.git
+              gitHubRepoUrl:
+                summary: GitHub repository URL
+                description: Repository URL without .git suffix
+                value:
+                  url: https://github.com/eclipse-che/che-server
+              gitHubBranchUrl:
+                summary: GitHub repository with branch
+                description: Repository URL with specific branch
+                value:
+                  url: https://github.com/user/repo/tree/develop
+              gitLabRepoUrl:
+                summary: GitLab repository URL
+                description: GitLab repository with .git suffix
+                value:
+                  url: https://gitlab.com/eclipse-che/che-dashboard.git
+              bitbucketRepoUrl:
+                summary: Bitbucket repository URL
+                description: Bitbucket repository URL
+                value:
+                  url: https://bitbucket.org/user/repo.git
+              rawDevfileUrl:
+                summary: Direct devfile URL
+                description: Direct link to a devfile.yaml file
                 value:
                   url: https://raw.githubusercontent.com/eclipse-che/che-server/main/devfile.yaml
-              hiddenDevfileYaml:
+              hiddenDevfileUrl:
+                summary: Hidden devfile URL
+                description: Direct link to a .devfile.yaml file
                 value:
                   url: https://raw.githubusercontent.com/user/repo/main/.devfile.yaml
       responses:
@@ -223,7 +287,43 @@ paths:
               schema:
                 $ref: '#/components/schemas/FactoryMeta'
               examples:
-                devfileV2Factory:
+                gitHubFactory:
+                  summary: Factory from GitHub repository
+                  description: Factory created from GitHub repository URL with .git suffix
+                  value:
+                    v: '4.0'
+                    name: che-dashboard
+                    source: https://github.com/eclipse-che/che-dashboard.git
+                    devfile:
+                      schemaVersion: '2.1.0'
+                      metadata:
+                        name: che-dashboard
+                        description: Eclipse Che Dashboard
+                      projects:
+                        - name: che-dashboard
+                          git:
+                            remotes:
+                              origin: https://github.com/eclipse-che/che-dashboard.git
+                    links:
+                      - rel: self
+                        href: /factory/resolver?url=https://github.com/eclipse-che/che-dashboard.git
+                gitLabFactory:
+                  summary: Factory from GitLab repository
+                  description: Factory created from GitLab repository URL
+                  value:
+                    v: '4.0'
+                    name: che-dashboard
+                    source: https://gitlab.com/eclipse-che/che-dashboard.git
+                    devfile:
+                      schemaVersion: '2.1.0'
+                      metadata:
+                        name: che-dashboard
+                    links:
+                      - rel: self
+                        href: /factory/resolver?url=https://gitlab.com/eclipse-che/che-dashboard.git
+                rawDevfileFactory:
+                  summary: Factory from raw devfile URL
+                  description: Factory created from direct devfile.yaml URL
                   value:
                     v: '4.0'
                     name: che-server
@@ -234,7 +334,7 @@ paths:
                         name: che-server
                     links:
                       - rel: self
-                        href: /factory/resolver?url=https://example.com/devfile.yaml
+                        href: /factory/resolver?url=https://raw.githubusercontent.com/eclipse-che/che-server/main/devfile.yaml
         '400':
           description: Missed required parameters or failed to validate factory
           content:

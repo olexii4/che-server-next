@@ -12,7 +12,7 @@
 
 /**
  * Swagger/OpenAPI configuration for Fastify
- * 
+ *
  * Configures @fastify/swagger and @fastify/swagger-ui plugins
  */
 import { FastifyInstance } from 'fastify';
@@ -35,13 +35,13 @@ export async function setupSwagger(fastify: FastifyInstance): Promise<void> {
   await fastify.register(fastifySwagger, {
     mode: 'static',
     specification: {
-      document: openApiSpec
-    }
+      document: openApiSpec,
+    },
   });
 
   // Register @fastify/swagger-ui plugin
   await fastify.register(fastifySwaggerUi, {
-    routePrefix: '/api-docs',
+    routePrefix: '/swagger',
     uiConfig: {
       docExpansion: 'list',
       deepLinking: true,
@@ -51,15 +51,15 @@ export async function setupSwagger(fastify: FastifyInstance): Promise<void> {
       showCommonExtensions: true,
       syntaxHighlight: {
         activate: true,
-        theme: 'monokai'
-      }
+        theme: 'monokai',
+      },
     },
     staticCSP: true,
-    transformStaticCSP: (header) => header,
+    transformStaticCSP: header => header,
     transformSpecification: (swaggerObject, req, reply) => {
       return swaggerObject;
     },
-    transformSpecificationClone: true
+    transformSpecificationClone: true,
   });
 }
 

@@ -27,19 +27,20 @@ dotenv.config();
 const fastify = Fastify({
   logger: {
     level: process.env.LOG_LEVEL || 'info',
-    transport: process.env.NODE_ENV === 'development' 
-      ? {
-          target: 'pino-pretty',
-          options: {
-            translateTime: 'HH:MM:ss Z',
-            ignore: 'pid,hostname'
+    transport:
+      process.env.NODE_ENV === 'development'
+        ? {
+            target: 'pino-pretty',
+            options: {
+              translateTime: 'HH:MM:ss Z',
+              ignore: 'pid,hostname',
+            },
           }
-        }
-      : undefined
-  }
+        : undefined,
+  },
 });
 
-const PORT = Number(process.env.PORT) || 3000;
+const PORT = Number(process.env.PORT) || 8080;
 const HOST = process.env.HOST || '0.0.0.0';
 
 // Register plugins and routes
@@ -47,7 +48,7 @@ async function start() {
   try {
     // Register CORS
     await fastify.register(fastifyCors, {
-      origin: true
+      origin: true,
     });
 
     // Register authentication hooks as decorators
@@ -58,28 +59,32 @@ async function start() {
     await setupSwagger(fastify);
 
     // Health check endpoint
-    fastify.get('/health', {
-      schema: {
-        tags: ['health'],
-        summary: 'Health check',
-        description: 'Check if the API is running',
-        response: {
-          200: {
-            description: 'Service is healthy',
-            type: 'object',
-            properties: {
-              status: { type: 'string' },
-              timestamp: { type: 'string' }
-            }
-          }
-        }
+    fastify.get(
+      '/health',
+      {
+        schema: {
+          tags: ['health'],
+          summary: 'Health check',
+          description: 'Check if the API is running',
+          response: {
+            200: {
+              description: 'Service is healthy',
+              type: 'object',
+              properties: {
+                status: { type: 'string' },
+                timestamp: { type: 'string' },
+              },
+            },
+          },
+        },
+      },
+      async (request, reply) => {
+        return reply.code(200).send({
+          status: 'ok',
+          timestamp: new Date().toISOString(),
+        });
       }
-    }, async (request, reply) => {
-      return reply.code(200).send({ 
-        status: 'ok', 
-        timestamp: new Date().toISOString() 
-      });
-    });
+    );
 
     // Register route modules
     await registerNamespaceRoutes(fastify);
@@ -90,11 +95,11 @@ async function start() {
     // Global error handler
     fastify.setErrorHandler((error: Error & { statusCode?: number }, request, reply) => {
       fastify.log.error(error);
-      
+
       reply.status(error.statusCode || 500).send({
         error: error.name || 'Internal Server Error',
         message: error.message,
-        ...(process.env.NODE_ENV === 'development' && { stack: error.stack })
+        ...(process.env.NODE_ENV === 'development' && { stack: error.stack }),
       });
     });
 
@@ -102,7 +107,7 @@ async function start() {
     fastify.setNotFoundHandler((request, reply) => {
       reply.status(404).send({
         error: 'Not Found',
-        message: `Route ${request.method} ${request.url} not found`
+        message: `Route ${request.method} ${request.url} not found`,
       });
     });
 
@@ -111,9 +116,9 @@ async function start() {
 
     console.log(`\n🚀 Kubernetes Namespace Provisioner API (Fastify) is running on port ${PORT}`);
     console.log(`\n📚 API Documentation:`);
-    console.log(`   Swagger UI: http://localhost:${PORT}/api-docs`);
-    console.log(`   OpenAPI JSON: http://localhost:${PORT}/api-docs/json`);
-    console.log(`   OpenAPI YAML: http://localhost:${PORT}/api-docs/yaml`);
+    console.log(`   Swagger UI: http://localhost:${PORT}/swagger`);
+    console.log(`   OpenAPI JSON: http://localhost:${PORT}/swagger/json`);
+    console.log(`   OpenAPI YAML: http://localhost:${PORT}/swagger/yaml`);
     console.log(`\n🔗 Endpoints:`);
     console.log(`   POST http://localhost:${PORT}/kubernetes/namespace/provision`);
     console.log(`   GET  http://localhost:${PORT}/kubernetes/namespace`);
@@ -124,7 +129,6 @@ async function start() {
     console.log(`   DELETE http://localhost:${PORT}/oauth/token`);
     console.log(`   GET  http://localhost:${PORT}/scm/resolve`);
     console.log(`   GET  http://localhost:${PORT}/health\n`);
-
   } catch (err) {
     fastify.log.error(err);
     process.exit(1);

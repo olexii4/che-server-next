@@ -12,7 +12,7 @@
 
 /**
  * Tests for OAuth routes (Fastify)
- * 
+ *
  * Based on: OAuthAuthenticationService (Java)
  */
 import Fastify, { FastifyInstance } from 'fastify';
@@ -21,147 +21,147 @@ import { authenticate, requireAuth } from '../src/middleware/auth';
 
 describe('OAuth Routes (Fastify)', () => {
   let app: FastifyInstance;
-  
+
   beforeEach(async () => {
     app = Fastify();
-    
+
     // Register authentication hooks
     app.decorate('authenticate', authenticate);
     app.decorate('requireAuth', requireAuth);
-    
+
     // Register routes
     await registerOAuthRoutes(app);
-    
+
     await app.ready();
   });
-  
+
   afterEach(async () => {
     await app.close();
   });
-  
+
   describe('GET /oauth', () => {
     it('should return list of registered OAuth authenticators', async () => {
       const response = await app.inject({
         method: 'GET',
         url: '/oauth',
         headers: {
-          'Authorization': 'Bearer user123:johndoe'
-        }
+          Authorization: 'Bearer user123:johndoe',
+        },
       });
-      
+
       expect(response.statusCode).toBe(200);
       const body = JSON.parse(response.body);
       expect(Array.isArray(body)).toBe(true);
       expect(body.length).toBeGreaterThan(0);
     });
-    
+
     it('should return authenticators with correct structure', async () => {
       const response = await app.inject({
         method: 'GET',
         url: '/oauth',
         headers: {
-          'Authorization': 'Bearer user123:johndoe'
-        }
+          Authorization: 'Bearer user123:johndoe',
+        },
       });
-      
+
       const body = JSON.parse(response.body);
       const authenticator = body[0];
       expect(authenticator).toHaveProperty('name');
       expect(authenticator).toHaveProperty('endpointUrl');
       expect(authenticator).toHaveProperty('links');
     });
-    
+
     it('should return 401 without authentication', async () => {
       const response = await app.inject({
         method: 'GET',
-        url: '/oauth'
+        url: '/oauth',
       });
-      
+
       expect(response.statusCode).toBe(401);
     });
   });
-  
+
   describe('GET /oauth/token', () => {
     it('should return 400 when oauth_provider is missing', async () => {
       const response = await app.inject({
         method: 'GET',
         url: '/oauth/token',
         headers: {
-          'Authorization': 'Bearer user123:johndoe'
-        }
+          Authorization: 'Bearer user123:johndoe',
+        },
       });
-      
+
       expect(response.statusCode).toBe(400);
       const body = JSON.parse(response.body);
       expect(body.message).toContain('required');
     });
-    
+
     it('should return OAuth token for valid provider', async () => {
       const response = await app.inject({
         method: 'GET',
         url: '/oauth/token?oauth_provider=github',
         headers: {
-          'Authorization': 'Bearer user123:johndoe'
-        }
+          Authorization: 'Bearer user123:johndoe',
+        },
       });
-      
+
       expect(response.statusCode).toBe(200);
       const body = JSON.parse(response.body);
       expect(body).toHaveProperty('token');
       expect(body).toHaveProperty('scope');
     });
-    
+
     it('should return 401 without authentication', async () => {
       const response = await app.inject({
         method: 'GET',
-        url: '/oauth/token?oauth_provider=github'
+        url: '/oauth/token?oauth_provider=github',
       });
-      
+
       expect(response.statusCode).toBe(401);
     });
   });
-  
+
   describe('DELETE /oauth/token', () => {
     it('should return 400 when oauth_provider is missing', async () => {
       const response = await app.inject({
         method: 'DELETE',
         url: '/oauth/token',
         headers: {
-          'Authorization': 'Bearer user123:johndoe'
-        }
+          Authorization: 'Bearer user123:johndoe',
+        },
       });
-      
+
       expect(response.statusCode).toBe(400);
     });
-    
+
     it('should delete token and return 204', async () => {
       // First create a token
       await app.inject({
         method: 'GET',
         url: '/oauth/token?oauth_provider=github',
         headers: {
-          'Authorization': 'Bearer user123:johndoe'
-        }
+          Authorization: 'Bearer user123:johndoe',
+        },
       });
-      
+
       // Then delete it
       const response = await app.inject({
         method: 'DELETE',
         url: '/oauth/token?oauth_provider=github',
         headers: {
-          'Authorization': 'Bearer user123:johndoe'
-        }
+          Authorization: 'Bearer user123:johndoe',
+        },
       });
-      
+
       expect(response.statusCode).toBe(204);
     });
-    
+
     it('should return 401 without authentication', async () => {
       const response = await app.inject({
         method: 'DELETE',
-        url: '/oauth/token?oauth_provider=github'
+        url: '/oauth/token?oauth_provider=github',
       });
-      
+
       expect(response.statusCode).toBe(401);
     });
   });

@@ -12,7 +12,7 @@
 
 /**
  * Authentication middleware for Fastify
- * 
+ *
  * Supports two authentication methods:
  * 1. Bearer token: Authorization: Bearer <userid>:<username>
  * 2. Basic auth: Authorization: Basic <base64(username:userid)>
@@ -35,7 +35,7 @@ declare module 'fastify' {
   interface FastifyRequest {
     subject?: Subject;
   }
-  
+
   interface FastifyInstance {
     authenticate: typeof authenticate;
     requireAuth: typeof requireAuth;
@@ -50,11 +50,11 @@ function parseBearerToken(token: string): Subject | null {
   if (parts.length !== 2) {
     return null;
   }
-  
+
   return {
     userId: parts[0],
     userName: parts[1],
-    token: token
+    token: token,
   };
 }
 
@@ -64,32 +64,29 @@ function parseBearerToken(token: string): Subject | null {
 function parseBasicAuth(credentials: string): Subject | null {
   const decoded = Buffer.from(credentials, 'base64').toString('utf-8');
   const parts = decoded.split(':');
-  
+
   if (parts.length !== 2) {
     return null;
   }
-  
+
   return {
     userId: parts[1],
     userName: parts[0],
-    token: decoded
+    token: decoded,
   };
 }
 
 /**
  * Fastify hook to authenticate requests
  */
-export async function authenticate(
-  request: FastifyRequest,
-  reply: FastifyReply
-): Promise<void> {
+export async function authenticate(request: FastifyRequest, reply: FastifyReply): Promise<void> {
   const authHeader = request.headers.authorization;
-  
+
   if (!authHeader) {
     request.subject = undefined;
     return;
   }
-  
+
   if (authHeader.startsWith('Bearer ')) {
     const token = authHeader.substring(7);
     const subject = parseBearerToken(token);
@@ -105,21 +102,18 @@ export async function authenticate(
       return;
     }
   }
-  
+
   request.subject = undefined;
 }
 
 /**
  * Fastify hook to require authentication
  */
-export async function requireAuth(
-  request: FastifyRequest,
-  reply: FastifyReply
-): Promise<void> {
+export async function requireAuth(request: FastifyRequest, reply: FastifyReply): Promise<void> {
   if (!request.subject) {
     reply.code(401).send({
       error: 'Unauthorized',
-      message: 'Authorization header is required'
+      message: 'Authorization header is required',
     });
   }
 }

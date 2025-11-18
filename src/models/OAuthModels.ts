@@ -12,7 +12,7 @@
 
 /**
  * OAuth models - TypeScript implementation of Eclipse Che OAuth DTOs
- * 
+ *
  * Based on Java interfaces:
  * - org.eclipse.che.api.auth.shared.dto.OAuthToken
  * - org.eclipse.che.security.oauth.shared.dto.OAuthAuthenticatorDescriptor
@@ -22,29 +22,29 @@ import { Link } from './FactoryModels';
 
 /**
  * OAuth Token
- * 
+ *
  * TypeScript implementation of org.eclipse.che.api.auth.shared.dto.OAuthToken
  */
 export interface OAuthToken {
   /** OAuth access token */
   token: string;
-  
+
   /** OAuth scope */
   scope?: string;
 }
 
 /**
  * OAuth Authenticator Descriptor
- * 
+ *
  * TypeScript implementation of org.eclipse.che.security.oauth.shared.dto.OAuthAuthenticatorDescriptor
  */
 export interface OAuthAuthenticatorDescriptor {
   /** Name of the OAuth provider (e.g., "github", "gitlab") */
   name: string;
-  
+
   /** Endpoint URL for OAuth provider */
   endpointUrl: string;
-  
+
   /** HAL links for OAuth operations */
   links?: Link[];
 }
@@ -70,15 +70,14 @@ export const OAUTH_CONSTANTS = {
     GITHUB: 'github',
     GITLAB: 'gitlab',
     BITBUCKET: 'bitbucket',
-    AZURE_DEVOPS: 'azure-devops'
+    AZURE_DEVOPS: 'azure-devops',
   },
-  
+
   /** Error messages */
   ERRORS: {
     PROVIDER_REQUIRED: 'OAuth provider is required',
     PROVIDER_NOT_FOUND: 'OAuth provider not found',
     TOKEN_NOT_FOUND: 'OAuth token not found',
-    UNAUTHORIZED: 'Unauthorized: OAuth token is invalid or expired'
-  }
+    UNAUTHORIZED: 'Unauthorized: OAuth token is invalid or expired',
+  },
 } as const;
-

@@ -7,13 +7,15 @@
 #### 1. Access Swagger UI
 
 Start the server:
+
 ```bash
 npm run dev
 ```
 
 Open your browser:
+
 ```
-http://localhost:3000/api-docs
+http://localhost:8080/swagger
 ```
 
 #### 2. Authenticate
@@ -25,10 +27,12 @@ Before you can test protected endpoints, you need to authenticate:
 3. You'll see two options:
 
 **Option A: BearerAuth (http, Bearer)**
+
 - Enter: `user123:johndoe`
 - Click **Authorize**
 
 **Option B: BasicAuth (http, Basic)**
+
 - Username: `johndoe`
 - Password: `user123`
 - Click **Authorize**
@@ -46,6 +50,7 @@ Now all requests will include your authentication credentials!
 5. Scroll down to see the response
 
 **Expected Response**:
+
 ```json
 {
   "status": "ok",
@@ -62,6 +67,7 @@ Now all requests will include your authentication credentials!
 5. Click **"Execute"** button
 
 **Expected Response**:
+
 ```json
 [
   {
@@ -84,6 +90,7 @@ Now all requests will include your authentication credentials!
 6. View the response
 
 **Expected Response**:
+
 ```json
 {
   "name": "che-johndoe",
@@ -99,6 +106,7 @@ Now all requests will include your authentication credentials!
 ### Endpoint Section
 
 Each endpoint shows:
+
 - **HTTP Method** (GET, POST, etc.) with color coding
 - **Path** (e.g., `/kubernetes/namespace/provision`)
 - **Summary** - Brief description
@@ -107,6 +115,7 @@ Each endpoint shows:
 ### Expanded Endpoint
 
 When you click an endpoint, you see:
+
 - **Description** - Detailed explanation
 - **Parameters** - Query params, headers, body (if any)
 - **Responses** - All possible response codes
@@ -116,6 +125,7 @@ When you click an endpoint, you see:
 ### Response Section
 
 After executing a request:
+
 - **Code** - HTTP status code (200, 401, 500, etc.)
 - **Details** - Response headers and body
 - **Response body** - Formatted JSON
@@ -129,7 +139,7 @@ After executing a request:
 
 ```
 1. Start server → npm run dev
-2. Open Swagger UI → http://localhost:3000/api-docs
+2. Open Swagger UI → http://localhost:8080/swagger
 3. Click Authorize → Enter "user123:johndoe"
 4. Test health → GET /health → Execute
 5. Provision namespace → POST /kubernetes/namespace/provision → Execute
@@ -156,6 +166,7 @@ After executing a request:
 ### Use Case 3: Testing Error Scenarios
 
 **Test Unauthorized Request**:
+
 ```
 1. If you're authorized, click Authorize → Logout
 2. Try POST /kubernetes/namespace/provision
@@ -163,6 +174,7 @@ After executing a request:
 ```
 
 **Test Invalid Auth**:
+
 ```
 1. Click Authorize
 2. Enter invalid token: "invalid"
@@ -196,6 +208,7 @@ KubernetesNamespaceMeta:
 ```
 
 This tells you:
+
 - What fields are required (`name`, `attributes`)
 - What types they are (string, object)
 - Examples of valid values
@@ -205,13 +218,15 @@ This tells you:
 ### For Import into Other Tools
 
 **JSON Format** (for Postman, Insomnia):
+
 ```bash
-curl http://localhost:3000/api-docs.json > openapi.json
+curl http://localhost:8080/swagger/json > openapi.json
 ```
 
 **YAML Format** (for editing, version control):
+
 ```bash
-curl http://localhost:3000/api-docs.yaml > openapi.yaml
+curl http://localhost:8080/swagger/yaml > openapi.yaml
 ```
 
 ### Import into Postman
@@ -219,7 +234,7 @@ curl http://localhost:3000/api-docs.yaml > openapi.yaml
 1. Open Postman
 2. Click **Import** button
 3. Select **Link** tab
-4. Enter: `http://localhost:3000/api-docs.json`
+4. Enter: `http://localhost:8080/swagger/json`
 5. Click **Continue** → **Import**
 6. All endpoints will be imported as a collection
 
@@ -227,7 +242,7 @@ curl http://localhost:3000/api-docs.yaml > openapi.yaml
 
 1. Open Insomnia
 2. Click **Create** dropdown → **Import From URL**
-3. Enter: `http://localhost:3000/api-docs.yaml`
+3. Enter: `http://localhost:8080/swagger/yaml`
 4. Click **Fetch and Import**
 
 ## Generate Client Code
@@ -240,7 +255,7 @@ npm install -g @openapitools/openapi-generator-cli
 
 # Generate TypeScript Axios client
 openapi-generator-cli generate \
-  -i http://localhost:3000/api-docs.json \
+  -i http://localhost:8080/swagger/json \
   -g typescript-axios \
   -o ./generated-client
 
@@ -255,7 +270,7 @@ const result = await api.provisionNamespace();
 
 ```bash
 openapi-generator-cli generate \
-  -i http://localhost:3000/api-docs.json \
+  -i http://localhost:8080/swagger/json \
   -g python \
   -o ./python-client
 
@@ -275,6 +290,7 @@ Swagger UI remembers your authentication between page refreshes. Just authorize 
 ### 2. Copy as cURL
 
 After executing any request:
+
 1. Look for the **Curl** section in the response
 2. Copy the command
 3. Paste into terminal
@@ -283,6 +299,7 @@ After executing any request:
 ### 3. Filter Endpoints
 
 Use the filter box at the top to search:
+
 - Type "provision" → Shows only provision endpoint
 - Type "namespace" → Shows all namespace-related endpoints
 - Type "health" → Shows health check
@@ -315,6 +332,7 @@ Jumps to Schemas → KubernetesNamespaceMeta
 ### Try Different Response Codes
 
 The API may return different response codes:
+
 - **200** - Success
 - **401** - Unauthorized
 - **500** - Server Error
@@ -324,6 +342,7 @@ Each is documented with example responses!
 ### Request Duration
 
 See how long each request takes:
+
 - Displayed below the response
 - Useful for performance testing
 - Shows network + server time
@@ -335,7 +354,8 @@ See how long each request takes:
 **Problem**: Swagger UI shows "Failed to fetch" error
 
 **Solutions**:
-1. Check server is running: `curl http://localhost:3000/health`
+
+1. Check server is running: `curl http://localhost:8080/health`
 2. Check port number in browser URL matches server
 3. Check browser console for CORS errors
 4. Try refreshing the page
@@ -345,6 +365,7 @@ See how long each request takes:
 **Problem**: Still getting 401 after clicking Authorize
 
 **Solutions**:
+
 1. Make sure you clicked **"Authorize"** button, not just entering the value
 2. Use correct format:
    - Bearer: `userid:username` (no "Bearer" prefix)
@@ -354,9 +375,10 @@ See how long each request takes:
 
 ### OpenAPI Spec Not Loading
 
-**Problem**: `/api-docs` shows blank page
+**Problem**: `/swagger` shows blank page
 
 **Solutions**:
+
 1. Check server logs for YAML parsing errors
 2. Validate spec: `swagger-cli validate src/swagger/openapi.yaml`
 3. Check file exists: `ls src/swagger/openapi.yaml`
@@ -385,6 +407,7 @@ See how long each request takes:
 ### What You'll See
 
 **Main Page**:
+
 - Title: "Kubernetes Namespace Provisioner API"
 - Description with feature list
 - Three sections: health, kubernetes-namespace
@@ -392,6 +415,7 @@ See how long each request takes:
 - Schemas section (bottom)
 
 **Endpoint Expanded**:
+
 - HTTP method badge (colored: green=GET, blue=POST)
 - Endpoint path
 - Lock icon if auth required
@@ -402,6 +426,7 @@ See how long each request takes:
 - Execute button
 
 **Response Display**:
+
 - Response code with color (green=2xx, red=4xx/5xx)
 - Response body (formatted JSON)
 - Response headers
@@ -409,6 +434,7 @@ See how long each request takes:
 - Request duration in milliseconds
 
 **Authorization Dialog**:
+
 - Two tabs: BearerAuth and BasicAuth
 - Input fields for credentials
 - Authorize button
@@ -420,7 +446,7 @@ See how long each request takes:
 **Happy testing with Swagger UI! 🎉**
 
 For more details, see:
+
 - [SWAGGER_GUIDE.md](../SWAGGER_GUIDE.md) - Complete Swagger documentation
 - [README.md](../README.md) - Full API reference
 - [QUICKSTART.md](../QUICKSTART.md) - Getting started guide
-

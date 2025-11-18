@@ -12,28 +12,28 @@
 
 /**
  * SCM (Source Control Management) models
- * 
+ *
  * Based on Java interface:
  * - org.eclipse.che.api.factory.server.ScmFileResolver
  */
 
 /**
  * SCM File Resolver interface
- * 
+ *
  * Defines a resolver that will resolve particular file content in specified SCM repository.
  */
 export interface ScmFileResolver {
   /**
    * Resolver acceptance based on the given repository URL
-   * 
+   *
    * @param repository - Repository URL to resolve file
    * @returns true if it will be accepted by the resolver implementation
    */
   accept(repository: string): boolean;
-  
+
   /**
    * Resolves particular file in the given repository
-   * 
+   *
    * @param repository - Repository URL to resolve file
    * @param filePath - Path to the desired file
    * @returns Promise resolving to content of the file
@@ -50,7 +50,7 @@ export enum ScmProviderType {
   GITLAB = 'gitlab',
   BITBUCKET = 'bitbucket',
   AZURE_DEVOPS = 'azure-devops',
-  GENERIC = 'generic'
+  GENERIC = 'generic',
 }
 
 /**
@@ -74,13 +74,12 @@ export const SCM_CONSTANTS = {
     FILE_REQUIRED: 'File parameter is required',
     NO_RESOLVER: 'Cannot find suitable file resolver for the provided URL',
     FILE_NOT_FOUND: 'Requested file not found in repository',
-    FETCH_FAILED: 'Failed to fetch file content from repository'
+    FETCH_FAILED: 'Failed to fetch file content from repository',
   },
-  
+
   /** Default branch names */
   DEFAULT_BRANCHES: ['main', 'master', 'develop'],
-  
-  /** File path patterns */
-  DEVFILE_PATTERNS: ['devfile.yaml', '.devfile.yaml', 'devfile.yml', '.devfile.yml']
-} as const;
 
+  /** File path patterns */
+  DEVFILE_PATTERNS: ['devfile.yaml', '.devfile.yaml', 'devfile.yml', '.devfile.yml'],
+} as const;

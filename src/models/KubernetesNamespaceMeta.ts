@@ -12,14 +12,14 @@
 
 /**
  * Describes meta information about kubernetes namespace.
- * 
+ *
  * This is a TypeScript implementation of the Java interface:
  * org.eclipse.che.workspace.infrastructure.kubernetes.api.shared.KubernetesNamespaceMeta
  */
 export interface KubernetesNamespaceMeta {
   /**
    * Returns the name of namespace.
-   * 
+   *
    * Value may be not a name of existing namespace, but predicted name with placeholders inside,
    * like <workspaceid>.
    */
@@ -27,7 +27,7 @@ export interface KubernetesNamespaceMeta {
 
   /**
    * Returns namespace attributes, which may contains additional info about it like description.
-   * 
+   *
    * Common attributes:
    * - "default": "true" or "false" - shows if k8s namespace is configured as default
    * - "phase": "Active" or "Terminating" - current namespace status
@@ -40,15 +40,14 @@ export interface KubernetesNamespaceMeta {
  */
 export const NAMESPACE_ATTRIBUTES = {
   /**
-   * Attribute that shows if k8s namespace is configured as default. 
+   * Attribute that shows if k8s namespace is configured as default.
    * Possible values: true/false. Absent value should be considered as false.
    */
   DEFAULT: 'default',
-  
+
   /**
-   * Attributes that contains information about current namespace status. 
+   * Attributes that contains information about current namespace status.
    * Example values: Active, Terminating. Absent value indicates that namespace is not created yet.
    */
-  PHASE: 'phase'
+  PHASE: 'phase',
 } as const;
-

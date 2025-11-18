@@ -1,7 +1,7 @@
 ### Test script for REST Client (VS Code) or IntelliJ HTTP Client
 ### Install "REST Client" extension in VS Code to use this file
 
-@baseUrl = http://localhost:3000
+@baseUrl = http://localhost:8080
 @username = johndoe
 @userid = user123
 

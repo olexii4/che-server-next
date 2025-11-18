@@ -17,7 +17,7 @@ import { NamespaceResolutionContextImpl } from '../models/NamespaceResolutionCon
 
 /**
  * Register Kubernetes namespace routes
- * 
+ *
  * This is a TypeScript implementation of the Java REST service:
  * org.eclipse.che.workspace.infrastructure.kubernetes.api.server.KubernetesNamespaceService
  */
@@ -30,148 +30,144 @@ export async function registerNamespaceRoutes(fastify: FastifyInstance): Promise
 
   /**
    * GET /kubernetes/namespace
-   * 
+   *
    * Get k8s namespaces where user is able to create workspaces.
    * This operation can be performed only by authorized user.
    */
-  fastify.get('/kubernetes/namespace', {
-    schema: {
-      tags: ['kubernetes-namespace'],
-      summary: 'List Kubernetes namespaces',
-      description: 'Get k8s namespaces where user is able to create workspaces',
-      security: [
-        { BearerAuth: [] },
-        { BasicAuth: [] }
-      ],
-      response: {
-        200: {
-          description: 'Successful response',
-          type: 'array',
-          items: {
+  fastify.get(
+    '/kubernetes/namespace',
+    {
+      schema: {
+        tags: ['kubernetes-namespace'],
+        summary: 'List Kubernetes namespaces',
+        description: 'Get k8s namespaces where user is able to create workspaces',
+        security: [{ BearerAuth: [] }, { BasicAuth: [] }],
+        response: {
+          200: {
+            description: 'Successful response',
+            type: 'array',
+            items: {
+              type: 'object',
+              properties: {
+                name: { type: 'string' },
+                attributes: {
+                  type: 'object',
+                  additionalProperties: { type: 'string' },
+                },
+              },
+            },
+          },
+          401: {
+            description: 'Unauthorized',
             type: 'object',
             properties: {
-              name: { type: 'string' },
-              attributes: { 
-                type: 'object',
-                additionalProperties: { type: 'string' }
-              }
-            }
-          }
+              error: { type: 'string' },
+              message: { type: 'string' },
+            },
+          },
+          500: {
+            description: 'Internal Server Error',
+            type: 'object',
+            properties: {
+              error: { type: 'string' },
+              message: { type: 'string' },
+              details: { type: 'string' },
+            },
+          },
         },
-        401: {
-          description: 'Unauthorized',
-          type: 'object',
-          properties: {
-            error: { type: 'string' },
-            message: { type: 'string' }
-          }
-        },
-        500: {
-          description: 'Internal Server Error',
-          type: 'object',
-          properties: {
-            error: { type: 'string' },
-            message: { type: 'string' },
-            details: { type: 'string' }
-          }
-        }
-      }
+      },
+      onRequest: [fastify.authenticate, fastify.requireAuth],
     },
-    onRequest: [
-      fastify.authenticate,
-      fastify.requireAuth
-    ]
-  }, async (request: FastifyRequest, reply: FastifyReply) => {
-    try {
-      const namespaces = await namespaceFactory.list();
-      return reply.code(200).send(namespaces);
-    } catch (error: any) {
-      fastify.log.error('Error fetching namespaces:', error);
-      return reply.code(500).send({
-        error: 'Internal Server Error',
-        message: 'Internal server error occurred during namespaces fetching',
-        details: error.message
-      });
+    async (request: FastifyRequest, reply: FastifyReply) => {
+      try {
+        const namespaces = await namespaceFactory.list();
+        return reply.code(200).send(namespaces);
+      } catch (error: any) {
+        fastify.log.error('Error fetching namespaces:', error);
+        return reply.code(500).send({
+          error: 'Internal Server Error',
+          message: 'Internal server error occurred during namespaces fetching',
+          details: error.message,
+        });
+      }
     }
-  });
+  );
 
   /**
    * POST /kubernetes/namespace/provision
-   * 
+   *
    * Provision k8s namespace where user is able to create workspaces.
    * This operation can be performed only by an authorized user.
-   * 
+   *
    * This is the main endpoint matching the Java implementation.
    */
-  fastify.post('/kubernetes/namespace/provision', {
-    schema: {
-      tags: ['kubernetes-namespace'],
-      summary: 'Provision Kubernetes namespace',
-      description: 'Provision k8s namespace where user is able to create workspaces',
-      security: [
-        { BearerAuth: [] },
-        { BasicAuth: [] }
-      ],
-      response: {
-        200: {
-          description: 'Namespace provisioned successfully',
-          type: 'object',
-          properties: {
-            name: { type: 'string' },
-            attributes: {
-              type: 'object',
-              additionalProperties: { type: 'string' }
-            }
-          }
+  fastify.post(
+    '/kubernetes/namespace/provision',
+    {
+      schema: {
+        tags: ['kubernetes-namespace'],
+        summary: 'Provision Kubernetes namespace',
+        description: 'Provision k8s namespace where user is able to create workspaces',
+        security: [{ BearerAuth: [] }, { BasicAuth: [] }],
+        response: {
+          200: {
+            description: 'Namespace provisioned successfully',
+            type: 'object',
+            properties: {
+              name: { type: 'string' },
+              attributes: {
+                type: 'object',
+                additionalProperties: { type: 'string' },
+              },
+            },
+          },
+          401: {
+            description: 'Unauthorized',
+            type: 'object',
+            properties: {
+              error: { type: 'string' },
+              message: { type: 'string' },
+            },
+          },
+          500: {
+            description: 'Internal Server Error',
+            type: 'object',
+            properties: {
+              error: { type: 'string' },
+              message: { type: 'string' },
+              details: { type: 'string' },
+            },
+          },
         },
-        401: {
-          description: 'Unauthorized',
-          type: 'object',
-          properties: {
-            error: { type: 'string' },
-            message: { type: 'string' }
-          }
-        },
-        500: {
-          description: 'Internal Server Error',
-          type: 'object',
-          properties: {
-            error: { type: 'string' },
-            message: { type: 'string' },
-            details: { type: 'string' }
-          }
-        }
-      }
+      },
+      onRequest: [fastify.authenticate, fastify.requireAuth],
     },
-    onRequest: [
-      fastify.authenticate,
-      fastify.requireAuth
-    ]
-  }, async (request: FastifyRequest, reply: FastifyReply) => {
-    try {
-      // Ensure user is authenticated
-      if (!request.subject) {
-        return reply.code(401).send({
-          error: 'Unauthorized',
-          message: 'Authentication required'
+    async (request: FastifyRequest, reply: FastifyReply) => {
+      try {
+        // Ensure user is authenticated
+        if (!request.subject) {
+          return reply.code(401).send({
+            error: 'Unauthorized',
+            message: 'Authentication required',
+          });
+        }
+
+        // Create namespace resolution context from authenticated subject
+        const context = new NamespaceResolutionContextImpl(request.subject);
+
+        // Provision the namespace
+        const namespaceMeta = await namespaceProvisioner.provision(context);
+
+        // Return the namespace metadata
+        return reply.code(200).send(namespaceMeta);
+      } catch (error: any) {
+        fastify.log.error('Error provisioning namespace:', error);
+        return reply.code(500).send({
+          error: 'Internal Server Error',
+          message: error.message || 'Internal server error occurred during namespace provisioning',
+          details: error.stack,
         });
       }
-
-      // Create namespace resolution context from authenticated subject
-      const context = new NamespaceResolutionContextImpl(request.subject);
-
-      // Provision the namespace
-      const namespaceMeta = await namespaceProvisioner.provision(context);
-
-      // Return the namespace metadata
-      return reply.code(200).send(namespaceMeta);
-    } catch (error: any) {
-      fastify.log.error('Error provisioning namespace:', error);
-      return reply.code(500).send({
-        error: 'Internal Server Error',
-        message: error.message || 'Internal server error occurred during namespace provisioning',
-        details: error.stack
-      });
     }
-  });
+  );
 }

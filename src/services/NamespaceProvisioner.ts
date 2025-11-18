@@ -16,7 +16,7 @@ import { KubernetesNamespaceFactory } from './KubernetesNamespaceFactory';
 
 /**
  * Provisions the k8s Namespace. After provisioning, configures the namespace.
- * 
+ *
  * This is a TypeScript implementation of the Java class:
  * org.eclipse.che.workspace.infrastructure.kubernetes.provision.NamespaceProvisioner
  */
@@ -25,7 +25,7 @@ export class NamespaceProvisioner {
 
   /**
    * Provision a namespace for the given context.
-   * 
+   *
    * @param namespaceResolutionContext - Context containing user information
    * @returns Promise resolving to namespace metadata
    * @throws Error if namespace cannot be provisioned or found
@@ -34,9 +34,7 @@ export class NamespaceProvisioner {
     namespaceResolutionContext: NamespaceResolutionContext
   ): Promise<KubernetesNamespaceMeta> {
     // Evaluate namespace name based on context
-    const namespaceName = this.namespaceFactory.evaluateNamespaceName(
-      namespaceResolutionContext
-    );
+    const namespaceName = this.namespaceFactory.evaluateNamespaceName(namespaceResolutionContext);
 
     // Get or create the namespace
     const namespace = await this.namespaceFactory.getOrCreate(
@@ -44,9 +42,9 @@ export class NamespaceProvisioner {
       namespaceResolutionContext.subject.userId
     );
 
-      if (!namespace.metadata?.name) {
-          throw new Error(`Not able to find the provisioned namespace name`);
-      }
+    if (!namespace.metadata?.name) {
+      throw new Error(`Not able to find the provisioned namespace name`);
+    }
 
     // Fetch the namespace metadata
     const namespaceMeta = await this.namespaceFactory.fetchNamespace(namespace.metadata.name);
@@ -58,4 +56,3 @@ export class NamespaceProvisioner {
     return namespaceMeta;
   }
 }
-

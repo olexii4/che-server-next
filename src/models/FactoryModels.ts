@@ -12,7 +12,7 @@
 
 /**
  * Factory models - TypeScript implementation of Eclipse Che Factory DTOs
- * 
+ *
  * Based on Java interfaces:
  * - org.eclipse.che.api.factory.shared.dto.FactoryMetaDto
  * - org.eclipse.che.api.factory.shared.dto.FactoryDevfileV2Dto
@@ -69,48 +69,48 @@ export interface ScmInfo {
 
 /**
  * Base Factory Meta interface
- * 
+ *
  * TypeScript implementation of org.eclipse.che.api.factory.shared.dto.FactoryMetaDto
  */
 export interface FactoryMeta {
   /** Factory version */
   v: string;
-  
+
   /** Factory name */
   name?: string;
-  
+
   /** Factory ID */
   id?: string;
-  
+
   /** Source filename (e.g., "devfile.yaml") */
   source?: string;
-  
+
   /** Factory creator */
   creator?: Author;
-  
+
   /** Factory policies */
   policies?: Policies;
-  
+
   /** IDE configuration */
   ide?: IdeConfig;
-  
+
   /** Factory links */
   links?: Link[];
 }
 
 /**
  * Factory with Devfile V2
- * 
+ *
  * TypeScript implementation of org.eclipse.che.api.factory.shared.dto.FactoryDevfileV2Dto
  */
 export interface FactoryDevfileV2 extends FactoryMeta {
-  /** 
+  /**
    * Devfile v2 as a generic object.
    * Since che-server doesn't know the structure of Devfile v2,
    * we use a generic object type.
    */
   devfile: Record<string, any>;
-  
+
   /** SCM information */
   scm_info?: ScmInfo;
 }
@@ -121,10 +121,10 @@ export interface FactoryDevfileV2 extends FactoryMeta {
 export interface FactoryResolverParams {
   /** URL of the factory source */
   url?: string;
-  
+
   /** Whether to validate the factory */
   validate?: boolean;
-  
+
   /** Additional custom parameters */
   [key: string]: string | boolean | undefined;
 }
@@ -143,18 +143,18 @@ export interface FactoryTokenRefreshParams {
 export const FACTORY_CONSTANTS = {
   /** URL parameter name */
   URL_PARAMETER_NAME: 'url',
-  
+
   /** Validate query parameter */
   VALIDATE_PARAMETER: 'validate',
-  
+
   /** Current factory version */
   CURRENT_VERSION: '4.0',
-  
+
   /** Error messages */
   ERRORS: {
-    NOT_RESOLVABLE: 'Cannot build factory with any of the provided parameters. Please check parameters correctness, and resend query.',
+    NOT_RESOLVABLE:
+      'Cannot build factory with any of the provided parameters. Please check parameters correctness, and resend query.',
     URL_REQUIRED: 'Factory url required',
-    PARAMETERS_REQUIRED: 'Factory build parameters required'
-  }
+    PARAMETERS_REQUIRED: 'Factory build parameters required',
+  },
 } as const;
-

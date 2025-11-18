@@ -12,44 +12,44 @@
 
 /**
  * Authorization Request Manager
- * 
+ *
  * Based on: org.eclipse.che.api.factory.server.scm.AuthorisationRequestManager
- * 
+ *
  * Manages authorization rejection states for SCM providers
  */
 export class AuthorisationRequestManager {
   private rejectedProviders: Set<string> = new Set();
-  
+
   /**
    * Check if authorization was rejected/stored for a provider
-   * 
+   *
    * @param providerName - SCM provider name (e.g., "github", "gitlab")
    * @returns true if authorization was rejected for this provider
    */
   isStored(providerName: string): boolean {
     return this.rejectedProviders.has(providerName);
   }
-  
+
   /**
    * Store that authorization was rejected for a provider
-   * 
+   *
    * @param providerName - SCM provider name
    */
   store(providerName: string): void {
     this.rejectedProviders.add(providerName);
     console.log(`Authorization rejection stored for provider: ${providerName}`);
   }
-  
+
   /**
    * Remove authorization rejection for a provider
-   * 
+   *
    * @param providerName - SCM provider name
    */
   remove(providerName: string): void {
     this.rejectedProviders.delete(providerName);
     console.log(`Authorization rejection removed for provider: ${providerName}`);
   }
-  
+
   /**
    * Clear all authorization rejections
    */
@@ -58,4 +58,3 @@ export class AuthorisationRequestManager {
     console.log('All authorization rejections cleared');
   }
 }
-

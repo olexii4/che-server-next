@@ -16,7 +16,7 @@ import { NamespaceResolutionContext } from '../models/NamespaceResolutionContext
 
 /**
  * Factory for managing Kubernetes namespaces.
- * 
+ *
  * This is a TypeScript implementation inspired by:
  * org.eclipse.che.workspace.infrastructure.kubernetes.namespace.KubernetesNamespaceFactory
  */
@@ -27,10 +27,10 @@ export class KubernetesNamespaceFactory {
 
   constructor(namespaceTemplate: string = 'che-<username>') {
     this.namespaceTemplate = namespaceTemplate;
-    
+
     // Initialize Kubernetes client
     this.kc = new k8s.KubeConfig();
-    
+
     // Try to load config from default locations
     try {
       this.kc.loadFromDefault();
@@ -38,52 +38,49 @@ export class KubernetesNamespaceFactory {
       // If no k8s config available, use in-cluster config
       console.warn('Could not load kubeconfig, some operations may fail:', error);
     }
-    
+
     this.k8sApi = this.kc.makeApiClient(k8s.CoreV1Api);
   }
 
   /**
    * Evaluate the namespace name based on the resolution context.
-   * 
+   *
    * @param context - Namespace resolution context
    * @returns Evaluated namespace name
    */
   evaluateNamespaceName(context: NamespaceResolutionContext): string {
     let name = this.namespaceTemplate;
-    
+
     // Replace placeholders
     name = name.replace('<username>', context.subject.userName.toLowerCase());
     name = name.replace('<userid>', context.subject.userId.toLowerCase());
-    
+
     if (context.workspaceId) {
       name = name.replace('<workspaceid>', context.workspaceId.toLowerCase());
     }
-    
+
     // Ensure name is valid for k8s (lowercase, alphanumeric, hyphens)
     name = name.replace(/[^a-z0-9-]/g, '-');
-    
+
     // Ensure it doesn't start or end with hyphen
     name = name.replace(/^-+|-+$/g, '');
-    
+
     // Limit length to 63 characters (k8s limit)
     if (name.length > 63) {
       name = name.substring(0, 63);
     }
-    
+
     return name;
   }
 
   /**
    * Get or create a Kubernetes namespace.
-   * 
+   *
    * @param namespaceName - Name of the namespace
    * @param userId - User ID for ownership
    * @returns Promise resolving to namespace object
    */
-  async getOrCreate(
-    namespaceName: string,
-    userId: string
-  ): Promise<k8s.V1Namespace> {
+  async getOrCreate(namespaceName: string, userId: string): Promise<k8s.V1Namespace> {
     try {
       // Try to get existing namespace
       const response = await this.k8sApi.readNamespace(namespaceName);
@@ -99,26 +96,23 @@ export class KubernetesNamespaceFactory {
 
   /**
    * Create a new Kubernetes namespace.
-   * 
+   *
    * @param namespaceName - Name of the namespace
    * @param userId - User ID for ownership
    * @returns Promise resolving to created namespace
    */
-  private async createNamespace(
-    namespaceName: string,
-    userId: string
-  ): Promise<k8s.V1Namespace> {
+  private async createNamespace(namespaceName: string, userId: string): Promise<k8s.V1Namespace> {
     const namespace: k8s.V1Namespace = {
       metadata: {
         name: namespaceName,
         labels: {
           'app.kubernetes.io/component': 'workspaces-namespace',
-          'app.kubernetes.io/part-of': 'che.eclipse.org'
+          'app.kubernetes.io/part-of': 'che.eclipse.org',
         },
         annotations: {
-          'che.eclipse.org/user-id': userId
-        }
-      }
+          'che.eclipse.org/user-id': userId,
+        },
+      },
     };
 
     const response = await this.k8sApi.createNamespace(namespace);
@@ -127,7 +121,7 @@ export class KubernetesNamespaceFactory {
 
   /**
    * Fetch namespace metadata.
-   * 
+   *
    * @param namespaceName - Name of the namespace
    * @returns Promise resolving to namespace metadata or null if not found
    */
@@ -135,21 +129,21 @@ export class KubernetesNamespaceFactory {
     try {
       const response = await this.k8sApi.readNamespace(namespaceName);
       const ns = response.body;
-      
+
       const attributes: Record<string, string> = {};
-      
+
       // Set phase attribute
       if (ns.status?.phase) {
         attributes[NAMESPACE_ATTRIBUTES.PHASE] = ns.status.phase;
       }
-      
+
       // Check if this is a default namespace (you can customize this logic)
       const isDefault = ns.metadata?.annotations?.['che.eclipse.org/default'] === 'true';
       attributes[NAMESPACE_ATTRIBUTES.DEFAULT] = isDefault.toString();
 
       return {
         name: namespaceName,
-        attributes
+        attributes,
       };
     } catch (error: any) {
       if (error.statusCode === 404) {
@@ -161,7 +155,7 @@ export class KubernetesNamespaceFactory {
 
   /**
    * List all namespaces managed by Che.
-   * 
+   *
    * @returns Promise resolving to array of namespace metadata
    */
   async list(): Promise<KubernetesNamespaceMeta[]> {
@@ -176,17 +170,17 @@ export class KubernetesNamespaceFactory {
 
       return response.body.items.map(ns => {
         const attributes: Record<string, string> = {};
-        
+
         if (ns.status?.phase) {
           attributes[NAMESPACE_ATTRIBUTES.PHASE] = ns.status.phase;
         }
-        
+
         const isDefault = ns.metadata?.annotations?.['che.eclipse.org/default'] === 'true';
         attributes[NAMESPACE_ATTRIBUTES.DEFAULT] = isDefault.toString();
 
         return {
           name: ns.metadata?.name || '',
-          attributes
+          attributes,
         };
       });
     } catch (error) {
@@ -195,4 +189,3 @@ export class KubernetesNamespaceFactory {
     }
   }
 }
-

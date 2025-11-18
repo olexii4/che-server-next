@@ -12,7 +12,7 @@
 
 /**
  * Context for namespace resolution containing user information.
- * 
+ *
  * This is a TypeScript implementation of the Java class:
  * org.eclipse.che.api.workspace.server.spi.NamespaceResolutionContext
  */
@@ -41,4 +41,3 @@ export class NamespaceResolutionContextImpl implements NamespaceResolutionContex
     return this.subject.userName;
   }
 }
-

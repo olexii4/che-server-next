@@ -3,7 +3,7 @@
 # Test script for Kubernetes Namespace Provisioner API
 # This script demonstrates how to use the API endpoints
 
-API_URL="http://localhost:3000"
+API_URL="http://localhost:8080"
 USERNAME="johndoe"
 USERID="user123"
 
