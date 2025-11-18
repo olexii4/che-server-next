@@ -16,6 +16,7 @@ import {
   OAuthProviderConfig,
   OAUTH_CONSTANTS,
 } from '../models/OAuthModels';
+import { logger } from '../utils/logger';
 
 /**
  * OAuth Service - Manages OAuth authentication and token operations
@@ -48,6 +49,13 @@ export class OAuthService {
       tokenEndpoint: 'https://bitbucket.org/site/oauth2/access_token',
       scopes: ['repository', 'account'],
     });
+
+    this.registerProvider({
+      name: OAUTH_CONSTANTS.PROVIDERS.AZURE_DEVOPS,
+      authorizationEndpoint: 'https://app.vssps.visualstudio.com/oauth2/authorize',
+      tokenEndpoint: 'https://app.vssps.visualstudio.com/oauth2/token',
+      scopes: ['vso.code', 'vso.code_write'],
+    });
   }
 
   /**
@@ -66,19 +74,45 @@ export class OAuthService {
    */
   getRegisteredAuthenticators(): OAuthAuthenticatorDescriptor[] {
     const descriptors: OAuthAuthenticatorDescriptor[] = [];
+    const apiEndpoint = process.env.CHE_API_ENDPOINT || 'http://localhost:8080';
 
     this.providers.forEach((config, name) => {
+      // Get the base endpoint URL (without /oauth/authorize path)
+      let endpointUrl = config.authorizationEndpoint;
+
+      // Extract base URL for display
+      if (name === 'github') {
+        endpointUrl = 'https://github.com';
+      } else if (name === 'gitlab') {
+        endpointUrl = 'https://gitlab.com';
+      } else if (name === 'bitbucket') {
+        endpointUrl = 'https://bitbucket.org';
+      } else if (name === 'azure-devops') {
+        endpointUrl = 'https://dev.azure.com';
+      }
+
       descriptors.push({
         name: name,
-        endpointUrl: config.authorizationEndpoint,
+        endpointUrl: endpointUrl,
         links: [
           {
-            rel: 'authenticate',
-            href: `/oauth/authenticate?oauth_provider=${name}`,
-          },
-          {
-            rel: 'token',
-            href: `/oauth/token?oauth_provider=${name}`,
+            method: 'GET',
+            parameters: [
+              {
+                name: 'oauth_provider',
+                defaultValue: name,
+                required: true,
+                valid: [],
+              },
+              {
+                name: 'mode',
+                defaultValue: 'federated_login',
+                required: true,
+                valid: [],
+              },
+            ],
+            rel: 'Authenticate URL',
+            href: `${apiEndpoint}/api/oauth/authenticate`,
           },
         ],
       });
@@ -135,7 +169,7 @@ export class OAuthService {
     const userTokens = this.tokens.get(userId)!;
     userTokens.set(oauthProvider, token);
 
-    console.log(`Stored OAuth token for user ${userId} and provider ${oauthProvider}`);
+    logger.info(`Stored OAuth token for user ${userId} and provider ${oauthProvider}`);
   }
 
   /**
@@ -160,7 +194,7 @@ export class OAuthService {
     }
 
     userTokens.delete(oauthProvider);
-    console.log(`Invalidated OAuth token for user ${userId} and provider ${oauthProvider}`);
+    logger.info(`Invalidated OAuth token for user ${userId} and provider ${oauthProvider}`);
   }
 
   /**

@@ -15,7 +15,11 @@ import {
   FactoryDevfileV2,
   FactoryResolverParams,
   FACTORY_CONSTANTS,
+  Link,
 } from '../models/FactoryModels';
+import * as YAML from 'yamljs';
+import { axiosInstanceNoCert } from '../helpers/getCertificateAuthority';
+import { logger } from '../utils/logger';
 
 /**
  * Get devfile filenames from configuration
@@ -132,14 +136,48 @@ export abstract class BaseFactoryParameterResolver implements FactoryParametersR
  */
 export class RawDevfileUrlFactoryParameterResolver extends BaseFactoryParameterResolver {
   /**
-   * Check if the URL ends with a valid devfile filename
+   * Check if the URL contains valid YAML/JSON content
+   * Similar to Java's containsYaml() method
    */
-  private isValidDevfileUrl(url: string): boolean {
-    const urlLower = url.toLowerCase();
-    // Remove query parameters and fragments for validation
-    const cleanUrl = urlLower.split('?')[0].split('#')[0];
+  private async containsValidDevfile(url: string): Promise<boolean> {
+    try {
+      // Fetch content from URL using axios
+      const response = await axiosInstanceNoCert.get(url, {
+        validateStatus: () => true, // Don't throw on any status code
+      });
+      logger.info(
+        { url, status: response.status },
+        '+++++++++++++++++++++++++++++++++++ Fetched URL',
+      );
+      if (response.status !== 200) {
+        return false;
+      }
 
-    return DEFAULT_DEVFILE_FILENAMES.some(filename => cleanUrl.endsWith(filename.toLowerCase()));
+      const content =
+        typeof response.data === 'string' ? response.data : JSON.stringify(response.data);
+      if (!content || content.trim().length === 0) {
+        return false;
+      }
+
+      // Try to parse as YAML/JSON
+      let parsed: any;
+      try {
+        // Try JSON first
+        parsed = JSON.parse(content);
+      } catch {
+        try {
+          // Try YAML
+          parsed = YAML.parse(content);
+        } catch {
+          return false;
+        }
+      }
+
+      // Check if parsed content is not empty and has some structure
+      return parsed && typeof parsed === 'object' && Object.keys(parsed).length > 0;
+    } catch {
+      return false;
+    }
   }
 
   accept(parameters: FactoryResolverParams): boolean {
@@ -148,22 +186,36 @@ export class RawDevfileUrlFactoryParameterResolver extends BaseFactoryParameterR
       return false;
     }
 
-    // Validate URL format and devfile filename
+    // Validate URL format
     try {
       new URL(url);
-
-      // Validate that URL ends with a valid devfile filename
-      if (!this.isValidDevfileUrl(url)) {
-        console.warn(
-          `URL does not end with a valid devfile filename. Expected: ${DEFAULT_DEVFILE_FILENAMES.join(', ')}. Got: ${url}`
-        );
-        return false;
-      }
-
-      return true;
     } catch {
       return false;
     }
+
+    // Note: In the Java implementation, this method is synchronous and fetches content
+    // In TypeScript/async world, we can't block in accept(), so we do a simpler check here
+    // and validate content in createFactory()
+
+    // For now, check if URL looks like it could contain a devfile
+    // (ends with .yaml, .yml, or .json, or contains 'devfile')
+    const urlLower = url.toLowerCase();
+    const cleanUrl = urlLower.split('?')[0].split('#')[0];
+
+    // Accept if it matches devfile filename patterns or has yaml/json extension
+    const hasValidExtension =
+      cleanUrl.endsWith('.yaml') ||
+      cleanUrl.endsWith('.yml') ||
+      cleanUrl.endsWith('.json') ||
+      DEFAULT_DEVFILE_FILENAMES.some(filename => cleanUrl.endsWith(filename.toLowerCase()));
+
+    if (!hasValidExtension) {
+      logger.warn(
+        `URL does not have a valid devfile extension. Expected: .yaml, .yml, .json or ${DEFAULT_DEVFILE_FILENAMES.join(', ')}. Got: ${url}`,
+      );
+    }
+
+    return hasValidExtension;
   }
 
   async createFactory(parameters: FactoryResolverParams): Promise<FactoryMeta> {
@@ -172,36 +224,44 @@ export class RawDevfileUrlFactoryParameterResolver extends BaseFactoryParameterR
       throw new Error(FACTORY_CONSTANTS.ERRORS.URL_REQUIRED);
     }
 
-    // Validate that URL ends with a valid devfile filename
-    if (!this.isValidDevfileUrl(url)) {
-      throw new Error(
-        `Invalid devfile URL. URL must end with one of: ${DEFAULT_DEVFILE_FILENAMES.join(', ')}. Got: ${url}`
-      );
-    }
-
     try {
-      // Fetch devfile content from URL
-      const response = await fetch(url);
-      if (!response.ok) {
-        throw new Error(`Failed to fetch devfile from ${url}: ${response.statusText}`);
+      // Fetch devfile content from URL (single fetch, similar to Java's URLFileContentProvider)
+      const response = await axiosInstanceNoCert.get(url, {
+        validateStatus: () => true, // Don't throw on any status code
+      });
+      if (response.status !== 200) {
+        throw new Error(
+          `Failed to fetch devfile from ${url}: HTTP ${response.status} ${response.statusText}`,
+        );
       }
 
-      const content = await response.text();
+      const content =
+        typeof response.data === 'string' ? response.data : JSON.stringify(response.data);
+      if (!content || content.trim().length === 0) {
+        throw new Error(`Empty content fetched from ${url}`);
+      }
 
-      // Try to parse as YAML/JSON to create devfile object
+      // Parse content as YAML/JSON to create devfile object
+      // Similar to Java's DevfileParser.parseYamlRaw()
       let devfile: Record<string, any>;
       try {
         // Try JSON first
         devfile = JSON.parse(content);
       } catch {
-        // If not JSON, treat as YAML (simplified - in production use a YAML parser)
-        // For now, create a simple devfile structure
-        devfile = {
-          schemaVersion: '2.1.0',
-          metadata: {
-            name: this.extractNameFromUrl(url),
-          },
-        };
+        try {
+          // Try YAML parsing
+          devfile = YAML.parse(content);
+          if (!devfile || typeof devfile !== 'object') {
+            throw new Error('Invalid YAML structure');
+          }
+        } catch (yamlError: any) {
+          throw new Error(`Failed to parse devfile content as JSON or YAML: ${yamlError.message}`);
+        }
+      }
+
+      // Validate that devfile has required structure
+      if (!devfile.schemaVersion && !devfile.apiVersion) {
+        throw new Error('Invalid devfile: missing schemaVersion or apiVersion field');
       }
 
       // Create factory with devfile v2
@@ -283,11 +343,22 @@ export class ScmRepositoryFactoryResolver extends BaseFactoryParameterResolver {
     }
 
     try {
-      new URL(url);
+      // Normalize SSH URLs to HTTPS format before checking
+      let normalizedUrl = url;
+      if (url.startsWith('git@')) {
+        const sshMatch = url.match(/^git@([^:]+):(.+)$/);
+        if (sshMatch) {
+          const hostname = sshMatch[1];
+          const path = sshMatch[2];
+          normalizedUrl = `https://${hostname}/${path}`;
+        }
+      }
+
+      new URL(normalizedUrl);
 
       // Accept if URL is a known SCM provider and doesn't already end with a devfile filename
-      const isScmUrl = this.isScmProviderUrl(url);
-      const hasDevfileFilename = this.hasDevfileFilename(url);
+      const isScmUrl = this.isScmProviderUrl(normalizedUrl);
+      const hasDevfileFilename = this.hasDevfileFilename(normalizedUrl);
 
       // Accept SCM URLs that don't already have devfile filename
       // (RawDevfileUrlFactoryParameterResolver will handle URLs with devfile filenames)
@@ -326,7 +397,7 @@ export class ScmRepositoryFactoryResolver extends BaseFactoryParameterResolver {
     }
 
     return DEFAULT_DEVFILE_FILENAMES.some(filename =>
-      cleanUrl.endsWith('/' + filename.toLowerCase())
+      cleanUrl.endsWith('/' + filename.toLowerCase()),
     );
   }
 
@@ -339,7 +410,10 @@ export class ScmRepositoryFactoryResolver extends BaseFactoryParameterResolver {
     // Import here to avoid circular dependency
     const { ScmService } = await import('./ScmFileResolvers');
     const scmService = new ScmService();
-
+    logger.info(
+      { url },
+      '+++++++++++++++++++++++++++++++++++ Creating factory from SCM repository URL',
+    );
     try {
       // Clean URL: remove .git suffix if present
       let cleanUrl = url;
@@ -347,37 +421,70 @@ export class ScmRepositoryFactoryResolver extends BaseFactoryParameterResolver {
         cleanUrl = cleanUrl.substring(0, cleanUrl.length - 4);
       }
 
+      logger.info({ cleanUrl }, '+++++++++++++++++++++++++++++++++++ Clean URL');
       // Try to fetch devfile from repository (tries all configured filenames)
       // Pass empty string or undefined to trigger automatic devfile detection
-      const devfileContent = await scmService.resolveFile(cleanUrl);
+      // Extract authorization from parameters if available
+      const authorization = parameters.authorization as string | undefined;
+      const devfileContent = await scmService.resolveFile(cleanUrl, undefined, authorization);
+      logger.info(
+        {
+          status: devfileContent ? 'FOUND' : 'NOT FOUND',
+          contentLength: devfileContent?.length,
+        },
+        '+++++++++++++++++++++++++++++++++++ Fetched devfile content from SCM',
+      );
 
       // Parse devfile content
       let devfile: Record<string, any>;
       try {
         // Try JSON first
         devfile = JSON.parse(devfileContent);
+        logger.info('+++++++++++++++++++++++++++++++++++ Parsed as JSON');
       } catch {
-        // If not JSON, we need a YAML parser
-        // For now, create a minimal devfile structure
-        // In production, use a proper YAML parser like 'yaml' or 'js-yaml'
-        devfile = {
-          schemaVersion: '2.1.0',
-          metadata: {
-            name: this.extractNameFromUrl(url),
-          },
-        };
+        try {
+          // Try YAML parsing
+          devfile = YAML.parse(devfileContent);
+          logger.info('+++++++++++++++++++++++++++++++++++ Parsed as YAML');
+          if (!devfile || typeof devfile !== 'object') {
+            throw new Error('Invalid YAML structure');
+          }
+        } catch (yamlError: any) {
+          throw new Error(`Failed to parse devfile content as JSON or YAML: ${yamlError.message}`);
+        }
       }
+
+      // Validate that devfile has required structure
+      if (!devfile.schemaVersion && !devfile.apiVersion) {
+        throw new Error('Invalid devfile: missing schemaVersion or apiVersion field');
+      }
+
+      // Detect SCM provider
+      const scmProvider = this.detectScmProvider(url);
+      const branch = this.extractBranchFromUrl(url);
 
       // Create factory with devfile v2
       const factory: FactoryDevfileV2 = {
         v: FACTORY_CONSTANTS.CURRENT_VERSION,
         devfile: devfile,
-        source: url,
+        source: 'devfile.yaml',
         name: this.extractNameFromUrl(url),
+        scm_info: {
+          clone_url: url,
+          scm_provider: scmProvider,
+          ...(branch && { branch }),
+        },
+        links: this.generateFactoryLinks(url),
       };
 
       return factory;
     } catch (error: any) {
+      // Re-throw UnauthorizedException without wrapping it
+      // so the route handler can properly detect it and return 401
+      const { UnauthorizedException } = await import('../models/UnauthorizedException');
+      if (error instanceof UnauthorizedException) {
+        throw error;
+      }
       throw new Error(`Failed to create factory from repository URL ${url}: ${error.message}`);
     }
   }
@@ -443,5 +550,51 @@ export class ScmRepositoryFactoryResolver extends BaseFactoryParameterResolver {
       // ignore
     }
     return undefined;
+  }
+
+  private detectScmProvider(url: string): string {
+    const lowerUrl = url.toLowerCase();
+
+    if (lowerUrl.includes('github.com')) {
+      return 'github';
+    }
+    if (lowerUrl.includes('gitlab.com') || lowerUrl.includes('gitlab')) {
+      return 'gitlab';
+    }
+    if (lowerUrl.includes('bitbucket.org') || lowerUrl.includes('bitbucket')) {
+      return 'bitbucket';
+    }
+    if (lowerUrl.includes('dev.azure.com') || lowerUrl.includes('visualstudio.com')) {
+      return 'azure-devops';
+    }
+
+    // Default to generic git
+    return 'git';
+  }
+
+  private generateFactoryLinks(repositoryUrl: string): Link[] {
+    // Get the base URL for API server (from environment)
+    // Use CHE_API_ENDPOINT if available, otherwise construct from request
+    const apiEndpoint = process.env.CHE_API_ENDPOINT || 'http://localhost:8080';
+
+    const links: Link[] = [];
+
+    // Files to generate links for
+    const files = [
+      'devfile.yaml',
+      '.che/che-editor.yaml',
+      '.che/che-theia-plugins.yaml',
+      '.vscode/extensions.json',
+    ];
+
+    files.forEach(file => {
+      links.push({
+        rel: `${file} content`,
+        href: `${apiEndpoint}/api/scm/resolve?repository=${encodeURIComponent(repositoryUrl)}&file=${encodeURIComponent(file)}`,
+        method: 'GET',
+      });
+    });
+
+    return links;
   }
 }

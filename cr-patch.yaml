@@ -1,0 +1,11 @@
+# Kubernetes CheCluster patch
+kind: CheCluster
+apiVersion: org.eclipse.che/v2
+spec:
+  components:
+    cheServer:
+      deployment:
+        containers:
+          - image: 'docker.io/olexii4dockerid/che-server:next'
+            imagePullPolicy: Always
+            name: che-server

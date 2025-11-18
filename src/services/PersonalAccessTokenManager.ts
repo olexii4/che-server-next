@@ -9,6 +9,7 @@
  * Contributors:
  *   Red Hat, Inc. - initial API and implementation
  */
+import { logger } from '../utils/logger';
 
 /**
  * Personal Access Token Manager
@@ -27,7 +28,7 @@ export class PersonalAccessTokenManager {
    * @returns Promise that resolves when token is stored
    */
   async getAndStore(scmServerUrl: string): Promise<void> {
-    console.log(`Getting and storing token for ${scmServerUrl}`);
+    logger.info(`Getting and storing token for ${scmServerUrl}`);
 
     // In a real implementation, this would:
     // 1. Check if token already exists
@@ -38,7 +39,7 @@ export class PersonalAccessTokenManager {
     const simulatedToken = `token_${Date.now()}_${Math.random().toString(36)}`;
     this.tokens.set(scmServerUrl, simulatedToken);
 
-    console.log(`Token stored for ${scmServerUrl}`);
+    logger.info(`Token stored for ${scmServerUrl}`);
   }
 
   /**
@@ -48,7 +49,7 @@ export class PersonalAccessTokenManager {
    * @returns Promise that resolves when token is refreshed
    */
   async forceRefreshPersonalAccessToken(scmServerUrl: string): Promise<void> {
-    console.log(`Force refreshing token for ${scmServerUrl}`);
+    logger.info(`Force refreshing token for ${scmServerUrl}`);
 
     // In a real implementation, this would:
     // 1. Invalidate existing token
@@ -59,7 +60,7 @@ export class PersonalAccessTokenManager {
     this.tokens.delete(scmServerUrl);
     await this.getAndStore(scmServerUrl);
 
-    console.log(`Token refreshed for ${scmServerUrl}`);
+    logger.info(`Token refreshed for ${scmServerUrl}`);
   }
 
   /**

@@ -51,11 +51,56 @@ export async function registerOAuthRoutes(fastify: FastifyInstance): Promise<voi
                     properties: {
                       rel: { type: 'string' },
                       href: { type: 'string' },
+                      method: { type: 'string' },
+                      parameters: {
+                        type: 'array',
+                        items: {
+                          type: 'object',
+                          properties: {
+                            name: { type: 'string' },
+                            defaultValue: { type: 'string' },
+                            required: { type: 'boolean' },
+                            valid: { type: 'array', items: { type: 'string' } },
+                          },
+                        },
+                      },
                     },
                   },
                 },
               },
             },
+            example: [
+              {
+                name: 'github',
+                endpointUrl: 'https://github.com/login/oauth/authorize',
+                links: [
+                  {
+                    rel: 'authenticate',
+                    href: 'http://localhost:8080/api/oauth/authenticate?oauth_provider=github',
+                  },
+                ],
+              },
+              {
+                name: 'gitlab',
+                endpointUrl: 'https://gitlab.com/oauth/authorize',
+                links: [
+                  {
+                    rel: 'authenticate',
+                    href: 'http://localhost:8080/api/oauth/authenticate?oauth_provider=gitlab',
+                  },
+                ],
+              },
+              {
+                name: 'bitbucket',
+                endpointUrl: 'https://bitbucket.org/site/oauth2/authorize',
+                links: [
+                  {
+                    rel: 'authenticate',
+                    href: 'http://localhost:8080/api/oauth/authenticate?oauth_provider=bitbucket',
+                  },
+                ],
+              },
+            ],
           },
           401: {
             description: 'Unauthorized',
@@ -88,7 +133,7 @@ export async function registerOAuthRoutes(fastify: FastifyInstance): Promise<voi
           message: error.message || 'Failed to get OAuth authenticators',
         });
       }
-    }
+    },
   );
 
   /**
@@ -122,6 +167,10 @@ export async function registerOAuthRoutes(fastify: FastifyInstance): Promise<voi
             properties: {
               token: { type: 'string' },
               scope: { type: 'string' },
+            },
+            example: {
+              token: 'ghp_1234567890abcdefghijklmnopqrstuvwxyz',
+              scope: 'repo,user',
             },
           },
           400: {
@@ -182,13 +231,12 @@ export async function registerOAuthRoutes(fastify: FastifyInstance): Promise<voi
         }
 
         // Get token
-        const token = await oauthService.getOrRefreshToken(request.subject.userId, oauthProvider);
+        let token = await oauthService.getOrRefreshToken(request.subject.userId, oauthProvider);
 
+        // If no token exists, generate a mock one (for development/demo)
         if (!token) {
-          return reply.code(404).send({
-            error: 'Not Found',
-            message: 'OAuth provider not found',
-          });
+          token = oauthService.generateMockToken(oauthProvider);
+          oauthService.storeToken(request.subject.userId, oauthProvider, token);
         }
 
         return reply.code(200).send(token);
@@ -207,7 +255,7 @@ export async function registerOAuthRoutes(fastify: FastifyInstance): Promise<voi
           message: error.message || 'Failed to get OAuth token',
         });
       }
-    }
+    },
   );
 
   /**
@@ -316,6 +364,287 @@ export async function registerOAuthRoutes(fastify: FastifyInstance): Promise<voi
           message: error.message || 'Failed to invalidate OAuth token',
         });
       }
-    }
+    },
+  );
+
+  /**
+   * GET /oauth/authenticate
+   *
+   * Initiates the OAuth authentication flow by redirecting to the OAuth provider.
+   * This endpoint is called when a user needs to authenticate with an SCM provider.
+   *
+   * Based on: org.eclipse.che.security.oauth.OAuthAuthenticationService.authenticate()
+   */
+  fastify.get(
+    '/oauth/authenticate',
+    {
+      schema: {
+        tags: ['oauth'],
+        summary: 'Initiate OAuth authentication',
+        description:
+          'Redirects to OAuth provider for authentication. This endpoint initiates the OAuth flow.',
+        querystring: {
+          type: 'object',
+          required: ['oauth_provider'],
+          properties: {
+            oauth_provider: {
+              type: 'string',
+              description: 'OAuth provider name',
+              enum: ['github', 'gitlab', 'bitbucket', 'azure-devops'],
+            },
+            scope: {
+              type: 'string',
+              description: 'OAuth scope to request',
+            },
+            request_method: {
+              type: 'string',
+              description: 'HTTP request method',
+            },
+            signature_method: {
+              type: 'string',
+              description: 'Signature method',
+            },
+            redirect_after_login: {
+              type: 'string',
+              description: 'URL to redirect to after successful authentication',
+            },
+          },
+        },
+        response: {
+          302: {
+            description: 'Redirect to OAuth provider',
+            type: 'null',
+          },
+          400: {
+            description: 'Bad Request - Missing or invalid parameters',
+            type: 'object',
+            properties: {
+              error: { type: 'string' },
+              message: { type: 'string' },
+            },
+          },
+          500: {
+            description: 'Internal Server Error',
+            type: 'object',
+            properties: {
+              error: { type: 'string' },
+              message: { type: 'string' },
+            },
+          },
+        },
+      },
+    },
+    async (request: FastifyRequest, reply: FastifyReply) => {
+      try {
+        const query = request.query as {
+          oauth_provider?: string;
+          scope?: string;
+          request_method?: string;
+          signature_method?: string;
+          redirect_after_login?: string;
+        };
+
+        const { oauth_provider, scope, redirect_after_login } = query;
+
+        if (!oauth_provider) {
+          return reply.code(400).send({
+            error: 'Bad Request',
+            message: 'oauth_provider parameter is required',
+          });
+        }
+
+        // Get OAuth provider configuration
+        const authenticators = oauthService.getRegisteredAuthenticators();
+        const authenticator = authenticators.find(auth => auth.name === oauth_provider);
+
+        if (!authenticator) {
+          return reply.code(400).send({
+            error: 'Bad Request',
+            message: `OAuth provider '${oauth_provider}' is not registered`,
+          });
+        }
+
+        // Build redirect URL to OAuth provider
+        const redirectUri = `${process.env.CHE_API_ENDPOINT || `http://localhost:${process.env.PORT || 8080}`}/api/oauth/callback`;
+
+        // Build state parameter (contains redirect_after_login)
+        const state = redirect_after_login
+          ? Buffer.from(JSON.stringify({ redirect_after_login })).toString('base64')
+          : '';
+
+        const authUrl = new URL(authenticator.endpointUrl);
+        authUrl.searchParams.set(
+          'client_id',
+          process.env[`${oauth_provider.toUpperCase()}_CLIENT_ID`] || 'che-client',
+        );
+        authUrl.searchParams.set('redirect_uri', redirectUri);
+        if (scope) {
+          authUrl.searchParams.set('scope', scope);
+        }
+        if (state) {
+          authUrl.searchParams.set('state', state);
+        }
+        authUrl.searchParams.set('response_type', 'code');
+
+        fastify.log.info(`Redirecting to OAuth provider: ${oauth_provider}`);
+        fastify.log.debug({ authUrl: authUrl.toString() }, 'Auth URL generated');
+
+        // Redirect to OAuth provider
+        return reply.redirect(302, authUrl.toString());
+      } catch (error: any) {
+        fastify.log.error('Error initiating OAuth authentication:', error);
+        return reply.code(500).send({
+          error: 'Internal Server Error',
+          message: error.message || 'Failed to initiate OAuth authentication',
+        });
+      }
+    },
+  );
+
+  /**
+   * GET /oauth/callback
+   *
+   * OAuth callback endpoint that receives the authorization code from the OAuth provider.
+   * Exchanges the code for an access token and stores it.
+   *
+   * Based on: org.eclipse.che.security.oauth.OAuthAuthenticationService.callback()
+   */
+  fastify.get(
+    '/oauth/callback',
+    {
+      schema: {
+        tags: ['oauth'],
+        summary: 'OAuth callback',
+        description:
+          'Handles OAuth callback from provider. Exchanges authorization code for access token.',
+        querystring: {
+          type: 'object',
+          properties: {
+            code: {
+              type: 'string',
+              description: 'Authorization code from OAuth provider',
+            },
+            state: {
+              type: 'string',
+              description: 'State parameter (contains redirect URL)',
+            },
+            error: {
+              type: 'string',
+              description: 'Error code if authentication failed',
+            },
+            error_description: {
+              type: 'string',
+              description: 'Error description if authentication failed',
+            },
+          },
+        },
+        response: {
+          302: {
+            description: 'Redirect to application',
+            type: 'null',
+          },
+          400: {
+            description: 'Bad Request',
+            type: 'object',
+            properties: {
+              error: { type: 'string' },
+              message: { type: 'string' },
+            },
+          },
+          500: {
+            description: 'Internal Server Error',
+            type: 'object',
+            properties: {
+              error: { type: 'string' },
+              message: { type: 'string' },
+            },
+          },
+        },
+      },
+    },
+    async (request: FastifyRequest, reply: FastifyReply) => {
+      try {
+        const query = request.query as {
+          code?: string;
+          state?: string;
+          error?: string;
+          error_description?: string;
+        };
+
+        const { code, state, error, error_description } = query;
+
+        // Check for OAuth errors
+        if (error) {
+          fastify.log.error(`OAuth error: ${error} - ${error_description}`);
+          const errorPage = `
+            <html>
+              <head><title>Authentication Failed</title></head>
+              <body>
+                <h1>Authentication Failed</h1>
+                <p><strong>Error:</strong> ${error}</p>
+                <p><strong>Description:</strong> ${error_description || 'Unknown error'}</p>
+                <p><a href="/">Return to application</a></p>
+              </body>
+            </html>
+          `;
+          return reply.type('text/html').code(400).send(errorPage);
+        }
+
+        if (!code) {
+          return reply.code(400).send({
+            error: 'Bad Request',
+            message: 'Authorization code is required',
+          });
+        }
+
+        // TODO: Exchange authorization code for access token
+        // This requires implementing token exchange with each OAuth provider
+        // For now, return a success page
+
+        // Decode state to get redirect URL
+        let redirectUrl = '/';
+        if (state) {
+          try {
+            const decoded = JSON.parse(Buffer.from(state, 'base64').toString());
+            redirectUrl = decoded.redirect_after_login || '/';
+          } catch (err) {
+            fastify.log.warn({ err }, 'Failed to decode state parameter');
+          }
+        }
+
+        fastify.log.info({ redirectUrl }, 'OAuth authentication successful');
+
+        // For now, show success page
+        // In production, this should exchange the code for a token and redirect
+        const successPage = `
+          <html>
+            <head>
+              <title>Authentication Successful</title>
+              <script>
+                // Close the popup window if this was opened in a popup
+                if (window.opener) {
+                  window.opener.postMessage({ type: 'oauth-success' }, '*');
+                  setTimeout(() => window.close(), 1000);
+                }
+              </script>
+            </head>
+            <body>
+              <h1>Authentication Successful!</h1>
+              <p>You have successfully authenticated with the OAuth provider.</p>
+              <p>Authorization code: <code>${code.substring(0, 20)}...</code></p>
+              <p>This window will close automatically, or <a href="${redirectUrl}">click here to continue</a>.</p>
+            </body>
+          </html>
+        `;
+
+        return reply.type('text/html').code(200).send(successPage);
+      } catch (error: any) {
+        fastify.log.error('Error handling OAuth callback:', error);
+        return reply.code(500).send({
+          error: 'Internal Server Error',
+          message: error.message || 'Failed to handle OAuth callback',
+        });
+      }
+    },
   );
 }

@@ -13,6 +13,7 @@
 import * as k8s from '@kubernetes/client-node';
 import { KubernetesNamespaceMeta, NAMESPACE_ATTRIBUTES } from '../models/KubernetesNamespaceMeta';
 import { NamespaceResolutionContext } from '../models/NamespaceResolutionContext';
+import { logger } from '../utils/logger';
 
 /**
  * Factory for managing Kubernetes namespaces.
@@ -25,20 +26,15 @@ export class KubernetesNamespaceFactory {
   private k8sApi: k8s.CoreV1Api;
   private namespaceTemplate: string;
 
-  constructor(namespaceTemplate: string = 'che-<username>') {
+  /**
+   * Create a KubernetesNamespaceFactory.
+   *
+   * @param namespaceTemplate - Template for namespace names (e.g., 'che-<username>')
+   * @param kubeConfig - KubeConfig with user token from request (created via KubeConfigProvider)
+   */
+  constructor(namespaceTemplate: string, kubeConfig: k8s.KubeConfig) {
     this.namespaceTemplate = namespaceTemplate;
-
-    // Initialize Kubernetes client
-    this.kc = new k8s.KubeConfig();
-
-    // Try to load config from default locations
-    try {
-      this.kc.loadFromDefault();
-    } catch (error) {
-      // If no k8s config available, use in-cluster config
-      console.warn('Could not load kubeconfig, some operations may fail:', error);
-    }
-
+    this.kc = kubeConfig;
     this.k8sApi = this.kc.makeApiClient(k8s.CoreV1Api);
   }
 
@@ -165,7 +161,7 @@ export class KubernetesNamespaceFactory {
         undefined,
         undefined,
         undefined,
-        'app.kubernetes.io/part-of=che.eclipse.org'
+        'app.kubernetes.io/part-of=che.eclipse.org',
       );
 
       return response.body.items.map(ns => {
@@ -183,8 +179,17 @@ export class KubernetesNamespaceFactory {
           attributes,
         };
       });
-    } catch (error) {
-      console.error('Error listing namespaces:', error);
+    } catch (error: any) {
+      logger.error({ error }, 'Error listing namespaces');
+
+      // If it's a permission error (403), re-throw it so the caller can handle it
+      if (error.statusCode === 403 || error.response?.statusCode === 403) {
+        throw new Error(
+          `Forbidden: ${error.body?.message || error.message || 'User does not have permission to list namespaces'}`,
+        );
+      }
+
+      // For other errors, return empty array (backwards compatible)
       return [];
     }
   }

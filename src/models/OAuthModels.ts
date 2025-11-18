@@ -34,6 +34,26 @@ export interface OAuthToken {
 }
 
 /**
+ * Link Parameter
+ */
+export interface LinkParameter {
+  name: string;
+  defaultValue?: string;
+  required: boolean;
+  valid: string[];
+}
+
+/**
+ * OAuth Link (extended Link with parameters)
+ */
+export interface OAuthLink {
+  rel: string;
+  href: string;
+  method?: string;
+  parameters?: LinkParameter[];
+}
+
+/**
  * OAuth Authenticator Descriptor
  *
  * TypeScript implementation of org.eclipse.che.security.oauth.shared.dto.OAuthAuthenticatorDescriptor
@@ -46,7 +66,7 @@ export interface OAuthAuthenticatorDescriptor {
   endpointUrl: string;
 
   /** HAL links for OAuth operations */
-  links?: Link[];
+  links?: OAuthLink[];
 }
 
 /**

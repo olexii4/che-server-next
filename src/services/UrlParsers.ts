@@ -11,6 +11,7 @@
  */
 
 import { DEFAULT_DEVFILE_FILENAMES } from './FactoryParametersResolver';
+import { logger } from '../utils/logger';
 
 /**
  * Devfile location information
@@ -65,7 +66,7 @@ export class GithubUrl implements RemoteFactoryUrl {
     username: string,
     repository: string,
     branch: string = 'HEAD',
-    devfileFilenames: string[] = DEFAULT_DEVFILE_FILENAMES
+    devfileFilenames: string[] = DEFAULT_DEVFILE_FILENAMES,
   ) {
     this.serverUrl = serverUrl;
     this.providerUrl = serverUrl;
@@ -110,13 +111,27 @@ export class GithubUrl implements RemoteFactoryUrl {
    */
   static parse(
     url: string,
-    devfileFilenames: string[] = DEFAULT_DEVFILE_FILENAMES
+    devfileFilenames: string[] = DEFAULT_DEVFILE_FILENAMES,
   ): GithubUrl | null {
     try {
-      const urlObj = new URL(url);
+      // Convert SSH URL to HTTPS if needed (git@github.com:user/repo.git -> https://github.com/user/repo.git)
+      let normalizedUrl = url;
+      if (url.startsWith('git@')) {
+        logger.info(`[GithubUrl.parse] Converting SSH URL to HTTPS: ${url}`);
+        // Match pattern: git@hostname:user/repo.git
+        const sshMatch = url.match(/^git@([^:]+):(.+)$/);
+        if (sshMatch) {
+          const hostname = sshMatch[1];
+          const path = sshMatch[2];
+          normalizedUrl = `https://${hostname}/${path}`;
+          logger.info(`[GithubUrl.parse] Normalized URL: ${normalizedUrl}`);
+        }
+      }
+
+      const urlObj = new URL(normalizedUrl);
 
       // Check if it's a GitHub URL
-      if (!url.includes('github.com') && !url.includes('github')) {
+      if (!normalizedUrl.includes('github.com') && !normalizedUrl.includes('github')) {
         return null;
       }
 
@@ -145,7 +160,7 @@ export class GithubUrl implements RemoteFactoryUrl {
 
       return new GithubUrl(serverUrl, username, repository, branch, devfileFilenames);
     } catch (error) {
-      console.error('Error parsing GitHub URL:', error);
+      logger.error({ error }, 'Error parsing GitHub URL');
       return null;
     }
   }
@@ -174,7 +189,7 @@ export class GitlabUrl implements RemoteFactoryUrl {
     subGroups: string,
     branch: string = 'HEAD',
     port?: string,
-    devfileFilenames: string[] = DEFAULT_DEVFILE_FILENAMES
+    devfileFilenames: string[] = DEFAULT_DEVFILE_FILENAMES,
   ) {
     this.scheme = scheme;
     this.hostName = hostName;
@@ -223,13 +238,26 @@ export class GitlabUrl implements RemoteFactoryUrl {
    */
   static parse(
     url: string,
-    devfileFilenames: string[] = DEFAULT_DEVFILE_FILENAMES
+    devfileFilenames: string[] = DEFAULT_DEVFILE_FILENAMES,
   ): GitlabUrl | null {
     try {
-      const urlObj = new URL(url);
+      // Convert SSH URL to HTTPS if needed (git@gitlab.com:user/repo.git -> https://gitlab.com/user/repo.git)
+      let normalizedUrl = url;
+      if (url.startsWith('git@')) {
+        logger.info(`[GitlabUrl.parse] Converting SSH URL to HTTPS: ${url}`);
+        const sshMatch = url.match(/^git@([^:]+):(.+)$/);
+        if (sshMatch) {
+          const hostname = sshMatch[1];
+          const path = sshMatch[2];
+          normalizedUrl = `https://${hostname}/${path}`;
+          logger.info(`[GitlabUrl.parse] Normalized URL: ${normalizedUrl}`);
+        }
+      }
+
+      const urlObj = new URL(normalizedUrl);
 
       // Check if it's a GitLab URL
-      if (!url.includes('gitlab.com') && !url.includes('gitlab')) {
+      if (!normalizedUrl.includes('gitlab.com') && !normalizedUrl.includes('gitlab')) {
         return null;
       }
 
@@ -263,7 +291,7 @@ export class GitlabUrl implements RemoteFactoryUrl {
 
       return new GitlabUrl(scheme, hostName, subGroups, branch, port, devfileFilenames);
     } catch (error) {
-      console.error('Error parsing GitLab URL:', error);
+      logger.error({ error }, 'Error parsing GitLab URL');
       return null;
     }
   }
@@ -288,7 +316,7 @@ export class BitbucketUrl implements RemoteFactoryUrl {
     workspace: string,
     repository: string,
     branch: string = 'HEAD',
-    devfileFilenames: string[] = DEFAULT_DEVFILE_FILENAMES
+    devfileFilenames: string[] = DEFAULT_DEVFILE_FILENAMES,
   ) {
     this.serverUrl = serverUrl;
     this.providerUrl = serverUrl;
@@ -306,28 +334,55 @@ export class BitbucketUrl implements RemoteFactoryUrl {
   }
 
   /**
-   * Build raw file URL for Bitbucket
-   * Format: https://bitbucket.org/<workspace>/<repo>/raw/<branch>/<file>
+   * Build raw file URL for Bitbucket using the API
+   * Format: https://api.bitbucket.org/2.0/repositories/<workspace>/<repo>/src/<branch>/<file>
    */
   rawFileLocation(filename: string): string {
     const branchName = this.branch || 'HEAD';
-    return `${this.serverUrl}/${this.workspace}/${this.repository}/raw/${branchName}/${filename}`;
+    // Use the Bitbucket API endpoint for raw file access
+    return `https://api.bitbucket.org/2.0/repositories/${this.workspace}/${this.repository}/src/${branchName}/${filename}`;
   }
 
   static parse(
     url: string,
-    devfileFilenames: string[] = DEFAULT_DEVFILE_FILENAMES
+    devfileFilenames: string[] = DEFAULT_DEVFILE_FILENAMES,
   ): BitbucketUrl | null {
     try {
-      const urlObj = new URL(url);
+      // Convert SSH URL to HTTPS if needed (git@bitbucket.org:workspace/repo.git -> https://bitbucket.org/workspace/repo.git)
+      let normalizedUrl = url;
+      if (url.startsWith('git@')) {
+        logger.info(`[BitbucketUrl.parse] Converting SSH URL to HTTPS: ${url}`);
+        const sshMatch = url.match(/^git@([^:]+):(.+)$/);
+        if (sshMatch) {
+          const hostname = sshMatch[1];
+          const path = sshMatch[2];
+          normalizedUrl = `https://${hostname}/${path}`;
+          logger.info(`[BitbucketUrl.parse] Normalized URL: ${normalizedUrl}`);
+        }
+      }
 
-      if (!url.includes('bitbucket.org') && !url.includes('bitbucket')) {
+      const urlObj = new URL(normalizedUrl);
+
+      logger.info(`[BitbucketUrl.parse] Parsing URL: ${normalizedUrl}`);
+      logger.info(
+        {
+          protocol: urlObj.protocol,
+          hostname: urlObj.hostname,
+          host: urlObj.host,
+          username: urlObj.username,
+          pathname: urlObj.pathname,
+        },
+        `[BitbucketUrl.parse] URL object`,
+      );
+
+      if (!normalizedUrl.includes('bitbucket.org') && !normalizedUrl.includes('bitbucket')) {
         return null;
       }
 
       const pathParts = urlObj.pathname.split('/').filter(p => p);
 
       if (pathParts.length < 2) {
+        logger.info(`[BitbucketUrl.parse] Not enough path parts: ${pathParts.length}`);
         return null;
       }
 
@@ -343,11 +398,35 @@ export class BitbucketUrl implements RemoteFactoryUrl {
         branch = pathParts[3];
       }
 
-      const serverUrl = `${urlObj.protocol}//${urlObj.host}`;
+      // Ensure serverUrl does NOT include username (use hostname instead of host)
+      const serverUrl = `${urlObj.protocol}//${urlObj.hostname}`;
 
-      return new BitbucketUrl(serverUrl, workspace, repository, branch, devfileFilenames);
+      logger.info(
+        {
+          serverUrl,
+          workspace,
+          repository,
+          branch,
+          devfileFilenames,
+        },
+        `[BitbucketUrl.parse] Parsed components`,
+      );
+
+      const bitbucketUrl = new BitbucketUrl(
+        serverUrl,
+        workspace,
+        repository,
+        branch,
+        devfileFilenames,
+      );
+
+      // Test raw URL construction
+      const testRawUrl = bitbucketUrl.rawFileLocation('devfile.yaml');
+      logger.info(`[BitbucketUrl.parse] Test raw URL for devfile.yaml: ${testRawUrl}`);
+
+      return bitbucketUrl;
     } catch (error) {
-      console.error('Error parsing Bitbucket URL:', error);
+      logger.error({ error }, '[BitbucketUrl.parse] Error parsing Bitbucket URL');
       return null;
     }
   }
@@ -364,7 +443,7 @@ export class UrlParserService {
    */
   static parse(
     url: string,
-    devfileFilenames: string[] = DEFAULT_DEVFILE_FILENAMES
+    devfileFilenames: string[] = DEFAULT_DEVFILE_FILENAMES,
   ): RemoteFactoryUrl | null {
     // Try GitHub
     const githubUrl = GithubUrl.parse(url, devfileFilenames);

@@ -18,6 +18,7 @@ import {
 } from './FactoryParametersResolver';
 import { PersonalAccessTokenManager } from './PersonalAccessTokenManager';
 import { AuthorisationRequestManager } from './AuthorisationRequestManager';
+import { logger } from '../utils/logger';
 
 /**
  * Factory Service - Manages factory creation and resolution
@@ -29,7 +30,7 @@ export class FactoryService {
 
   constructor(
     private personalAccessTokenManager: PersonalAccessTokenManager,
-    private authorisationRequestManager: AuthorisationRequestManager
+    private authorisationRequestManager: AuthorisationRequestManager,
   ) {
     // Register resolvers in priority order
     // SCM repository resolver (handles GitHub/GitLab/Bitbucket URLs without devfile filename)
@@ -62,13 +63,10 @@ export class FactoryService {
       throw new Error(FACTORY_CONSTANTS.ERRORS.PARAMETERS_REQUIRED);
     }
 
-    // console.log('>>>>>>>> Resolving factory with parameters:', parameters);
     // Find matching resolver
     const resolver = this.getFactoryParametersResolver(parameters);
-    //console.log('>>>>>>>> Resolving factory with resolver:', resolver);
     // Create factory using resolver
     const factory = await resolver.createFactory(parameters);
-    // console.log('>>>>>>>> Resolving factory with factory:', factory);
     if (!factory) {
       throw new Error(FACTORY_CONSTANTS.ERRORS.NOT_RESOLVABLE);
     }
@@ -107,7 +105,7 @@ export class FactoryService {
 
       // Check if authorization was rejected
       if (this.authorisationRequestManager.isStored(providerName)) {
-        console.log(`Authorization rejected for provider ${providerName}, skipping token refresh`);
+        logger.info(`Authorization rejected for provider ${providerName}, skipping token refresh`);
         return;
       }
 
@@ -124,7 +122,7 @@ export class FactoryService {
         await this.personalAccessTokenManager.getAndStore(scmServerUrl);
       }
     } catch (error: any) {
-      console.error('Error refreshing token:', error);
+      logger.error('Error refreshing token:', error);
       throw new Error(`Failed to refresh token for ${url}: ${error.message}`);
     }
   }
@@ -137,11 +135,15 @@ export class FactoryService {
    * @throws Error if no resolver accepts the parameters
    */
   private getFactoryParametersResolver(
-    parameters: FactoryResolverParams
+    parameters: FactoryResolverParams,
   ): FactoryParametersResolver {
     // Find resolver that accepts these parameters
     for (const resolver of this.resolvers) {
       try {
+        logger.info(
+          { resolver: resolver.getProviderName(), parameters },
+          '>>>>>>>> Checking resolver',
+        );
         if (resolver.accept(parameters)) {
           return resolver;
         }
@@ -158,7 +160,7 @@ export class FactoryService {
         `Unable to resolve factory from URL: ${url}. ` +
           `Supported URLs: ` +
           `1) Direct devfile URLs ending with devfile.yaml or .devfile.yaml, ` +
-          `2) SCM repository URLs from GitHub, GitLab, or Bitbucket.`
+          `2) SCM repository URLs from GitHub, GitLab, or Bitbucket.`,
       );
     }
 
@@ -177,22 +179,29 @@ export class FactoryService {
     }
 
     // Add more validation as needed
-    console.log('Factory validation passed');
+    logger.info('Factory validation passed');
   }
 
   /**
-   * Inject links into factory (simplified version)
+   * Inject links into factory
+   * Preserves existing links and adds a "self" link
    *
    * @param factory - Factory to inject links into
    * @param parameters - Original parameters
    */
   private injectLinks(factory: FactoryMeta, parameters: FactoryResolverParams): void {
-    // In a real implementation, this would add HAL links
-    factory.links = [
-      {
+    // Preserve existing links from resolvers (like SCM file links)
+    if (!factory.links) {
+      factory.links = [];
+    }
+
+    // Only add self link if it doesn't exist
+    const hasSelfLink = factory.links.some(link => link.rel === 'self');
+    if (!hasSelfLink) {
+      factory.links.unshift({
         rel: 'self',
-        href: `/factory/resolver?url=${encodeURIComponent((parameters[FACTORY_CONSTANTS.URL_PARAMETER_NAME] as string) || '')}`,
-      },
-    ];
+        href: `/api/factory/resolver?url=${encodeURIComponent((parameters[FACTORY_CONSTANTS.URL_PARAMETER_NAME] as string) || '')}`,
+      });
+    }
   }
 }

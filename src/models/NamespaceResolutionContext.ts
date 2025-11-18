@@ -30,7 +30,7 @@ export interface NamespaceResolutionContext {
 export class NamespaceResolutionContextImpl implements NamespaceResolutionContext {
   constructor(
     public subject: Subject,
-    public workspaceId?: string | null
+    public workspaceId?: string | null,
   ) {}
 
   getUserId(): string {

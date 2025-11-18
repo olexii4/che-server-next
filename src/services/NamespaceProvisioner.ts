@@ -10,7 +10,7 @@
  *   Red Hat, Inc. - initial API and implementation
  */
 
-import { KubernetesNamespaceMeta, NAMESPACE_ATTRIBUTES } from '../models/KubernetesNamespaceMeta';
+import { KubernetesNamespaceMeta } from '../models/KubernetesNamespaceMeta';
 import { NamespaceResolutionContext } from '../models/NamespaceResolutionContext';
 import { KubernetesNamespaceFactory } from './KubernetesNamespaceFactory';
 
@@ -31,7 +31,7 @@ export class NamespaceProvisioner {
    * @throws Error if namespace cannot be provisioned or found
    */
   async provision(
-    namespaceResolutionContext: NamespaceResolutionContext
+    namespaceResolutionContext: NamespaceResolutionContext,
   ): Promise<KubernetesNamespaceMeta> {
     // Evaluate namespace name based on context
     const namespaceName = this.namespaceFactory.evaluateNamespaceName(namespaceResolutionContext);
@@ -39,7 +39,7 @@ export class NamespaceProvisioner {
     // Get or create the namespace
     const namespace = await this.namespaceFactory.getOrCreate(
       namespaceName,
-      namespaceResolutionContext.subject.userId
+      namespaceResolutionContext.subject.userId,
     );
 
     if (!namespace.metadata?.name) {

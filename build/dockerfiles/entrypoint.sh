@@ -20,9 +20,16 @@ export HOST=${HOST:-0.0.0.0}
 export NODE_ENV=${NODE_ENV:-production}
 export CHE_HOME=${CHE_HOME:-/home/user/che-server}
 
-# Set namespace template if provided
-if [ -n "${CHE_NAMESPACE_TEMPLATE}" ]; then
+# Set namespace template from CHE environment variables
+if [ -n "${CHE_INFRA_KUBERNETES_NAMESPACE_DEFAULT}" ]; then
+  export NAMESPACE_TEMPLATE=${CHE_INFRA_KUBERNETES_NAMESPACE_DEFAULT}
+elif [ -n "${CHE_NAMESPACE_TEMPLATE}" ]; then
   export NAMESPACE_TEMPLATE=${CHE_NAMESPACE_TEMPLATE}
+fi
+
+# Set API endpoint if provided
+if [ -n "${CHE_API}" ]; then
+  export CHE_API_ENDPOINT=${CHE_API}
 fi
 
 # Set factory default devfile filenames if provided

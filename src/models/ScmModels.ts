@@ -36,10 +36,11 @@ export interface ScmFileResolver {
    *
    * @param repository - Repository URL to resolve file
    * @param filePath - Path to the desired file
+   * @param authorization - Optional Authorization header for private repositories
    * @returns Promise resolving to content of the file
    * @throws Error if the given file is absent or other error occurs
    */
-  fileContent(repository: string, filePath: string): Promise<string>;
+  fileContent(repository: string, filePath: string, authorization?: string): Promise<string>;
 }
 
 /**

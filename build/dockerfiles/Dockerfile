@@ -23,6 +23,9 @@ WORKDIR /che-server
 RUN yarn install --immutable
 
 COPY src /che-server/src
+COPY webpack.config.common.js /che-server/
+COPY webpack.config.prod.js /che-server/
+COPY webpack.config.dev.js /che-server/
 RUN yarn build
 
 # Production image
@@ -36,7 +39,6 @@ ENV CHE_HOME=/home/user/che-server
 COPY --from=builder /che-server/dist ${CHE_HOME}/dist
 COPY --from=builder /che-server/node_modules ${CHE_HOME}/node_modules
 COPY --from=builder /che-server/package.json ${CHE_HOME}/
-COPY --from=builder /che-server/src/swagger ${CHE_HOME}/src/swagger
 
 # Copy entrypoint script
 COPY build/dockerfiles/entrypoint.sh /entrypoint.sh

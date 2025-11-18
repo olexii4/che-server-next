@@ -1,5 +1,5 @@
-/**
- * Copyright (c) 2025 Red Hat, Inc.
+/*
+ * Copyright (c) 2021-2025 Red Hat, Inc.
  * This program and the accompanying materials are made
  * available under the terms of the Eclipse Public License 2.0
  * which is available at https://www.eclipse.org/legal/epl-2.0/
@@ -12,37 +12,67 @@
 
 module.exports = {
   root: true,
-  parser: '@typescript-eslint/parser',
-  plugins: ['@typescript-eslint', 'prettier'],
+  env: {
+    es2020: true,
+    jest: true,
+  },
   extends: [
     'eslint:recommended',
+    'plugin:@typescript-eslint/eslint-recommended',
     'plugin:@typescript-eslint/recommended',
-    'plugin:prettier/recommended',
+    'prettier',
   ],
+  ignorePatterns: [
+    '.github/',
+    '.vscode/',
+    'assets/',
+    'coverage/',
+    'lib/',
+    'dist/',
+    'build/',
+    '*.js',
+  ],
+  parser: '@typescript-eslint/parser',
   parserOptions: {
-    ecmaVersion: 2020,
     sourceType: 'module',
-    project: './tsconfig.json',
   },
+  plugins: ['@typescript-eslint', 'notice', 'prettier'],
   rules: {
-    // Prettier integration
     'prettier/prettier': 'error',
-
-    // TypeScript specific rules
-    '@typescript-eslint/no-explicit-any': 'warn',
-    '@typescript-eslint/explicit-function-return-type': 'off',
-    '@typescript-eslint/explicit-module-boundary-types': 'off',
-    '@typescript-eslint/no-unused-vars': [
+    'no-tabs': 'error',
+    'linebreak-style': ['error', 'unix'],
+    semi: ['error', 'always'],
+    'no-multiple-empty-lines': [
       'error',
       {
-        argsIgnorePattern: '^_',
-        varsIgnorePattern: '^_',
+        max: 1,
+        maxEOF: 1,
+      },
+    ],
+    'notice/notice': [
+      'warn',
+      {
+        templateFile: '.config/copyright.js',
+        onNonMatchingHeader: 'report',
+        messages: {
+          reportAndSkip: 'Missing license header',
+        },
+      },
+    ],
+    'spaced-comment': 'error',
+    'no-warning-comments': [
+      'warn',
+      {
+        terms: ['todo'],
+        location: 'start',
       },
     ],
 
-    // General rules
-    'no-console': 'off',
-    'no-debugger': 'error',
+    // disabled to avoid conflicts with prettier
+    quotes: 'off',
+
+    // TODO enable rules below and fix errors
+    '@typescript-eslint/explicit-module-boundary-types': 'off',
+    '@typescript-eslint/no-explicit-any': 'off',
   },
-  ignorePatterns: ['dist/', 'node_modules/', 'build/', '*.config.js', 'coverage/'],
 };

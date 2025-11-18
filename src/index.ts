@@ -18,7 +18,28 @@ import { registerNamespaceRoutes } from './routes/namespaceRoutes';
 import { registerFactoryRoutes } from './routes/factoryRoutes';
 import { registerOAuthRoutes } from './routes/oauthRoutes';
 import { registerScmRoutes } from './routes/scmRoutes';
+import { registerDataResolverRoutes } from './routes/dataResolverRoutes';
+import { registerClusterInfoRoutes } from './routes/clusterInfoRoutes';
+import { registerClusterConfigRoutes } from './routes/clusterConfigRoutes';
+import { registerServerConfigRoutes } from './routes/serverConfigRoutes';
+import { registerDevWorkspaceRoutes } from './routes/devworkspaceRoutes';
+import { registerDevWorkspaceTemplateRoutes } from './routes/devworkspaceTemplateRoutes';
+import { registerDevWorkspaceResourcesRoutes } from './routes/devworkspaceResourcesRoutes';
+import { registerDevWorkspaceClusterRoutes } from './routes/devworkspaceClusterRoutes';
+import { registerPodsRoutes } from './routes/podsRoutes';
+import { registerEventsRoutes } from './routes/eventsRoutes';
+import { registerEditorsRoutes } from './routes/editorsRoutes';
+import { registerUserProfileRoutes } from './routes/userProfileRoutes';
+import { registerSshKeysRoutes } from './routes/sshKeysRoutes';
+import { registerPersonalAccessTokenRoutes } from './routes/personalAccessTokenRoutes';
+import { registerGitConfigRoutes } from './routes/gitConfigRoutes';
+import { registerDockerConfigRoutes } from './routes/dockerConfigRoutes';
+import { registerWorkspacePreferencesRoutes } from './routes/workspacePreferencesRoutes';
+import { registerGettingStartedSampleRoutes } from './routes/gettingStartedSampleRoutes';
+import { registerSystemRoutes } from './routes/systemRoutes';
 import { setupSwagger } from './config/swagger';
+import { logger } from './utils/logger';
+import { exec } from 'child_process';
 
 // Load environment variables
 dotenv.config();
@@ -46,9 +67,25 @@ const HOST = process.env.HOST || '0.0.0.0';
 // Register plugins and routes
 async function start() {
   try {
-    // Register CORS
+    // Register CORS with proper headers for file downloads and OPTIONS handling
     await fastify.register(fastifyCors, {
       origin: true,
+      credentials: true,
+      methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+      allowedHeaders: [
+        'Content-Type',
+        'Authorization',
+        'gap-auth',
+        'Accept',
+        'Origin',
+        'X-Requested-With',
+        'X-Forwarded-Proto',
+        'X-Forwarded-Host',
+      ],
+      exposedHeaders: ['Content-Disposition', 'Content-Type', 'Content-Length'],
+      maxAge: 86400, // 24 hours
+      preflightContinue: false,
+      optionsSuccessStatus: 204,
     });
 
     // Register authentication hooks as decorators
@@ -83,14 +120,238 @@ async function start() {
           status: 'ok',
           timestamp: new Date().toISOString(),
         });
-      }
+      },
     );
 
-    // Register route modules
-    await registerNamespaceRoutes(fastify);
-    await registerFactoryRoutes(fastify);
-    await registerOAuthRoutes(fastify);
-    await registerScmRoutes(fastify);
+    // Register route modules with /api prefix (matches Java implementation)
+    await fastify.register(
+      async apiInstance => {
+        await registerNamespaceRoutes(apiInstance);
+        await registerFactoryRoutes(apiInstance);
+        await registerOAuthRoutes(apiInstance);
+        await registerScmRoutes(apiInstance);
+        await registerDataResolverRoutes(apiInstance);
+        await registerClusterInfoRoutes(apiInstance);
+        await registerClusterConfigRoutes(apiInstance);
+        await registerServerConfigRoutes(apiInstance);
+        await registerDevWorkspaceRoutes(apiInstance);
+        await registerDevWorkspaceTemplateRoutes(apiInstance);
+        await registerDevWorkspaceResourcesRoutes(apiInstance);
+        await registerDevWorkspaceClusterRoutes(apiInstance);
+        await registerPodsRoutes(apiInstance);
+        await registerEventsRoutes(apiInstance);
+        await registerEditorsRoutes(apiInstance);
+        await registerUserProfileRoutes(apiInstance);
+        await registerSshKeysRoutes(apiInstance);
+        await registerPersonalAccessTokenRoutes(apiInstance);
+        await registerGitConfigRoutes(apiInstance);
+        await registerDockerConfigRoutes(apiInstance);
+        await registerWorkspacePreferencesRoutes(apiInstance);
+        await registerGettingStartedSampleRoutes(apiInstance);
+        await registerSystemRoutes(apiInstance);
+      },
+      { prefix: '/api' },
+    );
+
+    // ALSO register the same routes with /dashboard/api prefix
+    // This makes our server compatible with Eclipse Che Dashboard's expected API paths
+    await fastify.register(
+      async dashboardApiInstance => {
+        await registerNamespaceRoutes(dashboardApiInstance);
+        await registerFactoryRoutes(dashboardApiInstance);
+        await registerOAuthRoutes(dashboardApiInstance);
+        await registerScmRoutes(dashboardApiInstance);
+        await registerDataResolverRoutes(dashboardApiInstance);
+        await registerClusterInfoRoutes(dashboardApiInstance);
+        await registerClusterConfigRoutes(dashboardApiInstance);
+        await registerServerConfigRoutes(dashboardApiInstance);
+        await registerDevWorkspaceRoutes(dashboardApiInstance);
+        await registerDevWorkspaceTemplateRoutes(dashboardApiInstance);
+        await registerDevWorkspaceResourcesRoutes(dashboardApiInstance);
+        await registerDevWorkspaceClusterRoutes(dashboardApiInstance);
+        await registerPodsRoutes(dashboardApiInstance);
+        await registerEventsRoutes(dashboardApiInstance);
+        await registerEditorsRoutes(dashboardApiInstance);
+        await registerUserProfileRoutes(dashboardApiInstance);
+        await registerSshKeysRoutes(dashboardApiInstance);
+        await registerPersonalAccessTokenRoutes(dashboardApiInstance);
+        await registerGitConfigRoutes(dashboardApiInstance);
+        await registerDockerConfigRoutes(dashboardApiInstance);
+        await registerWorkspacePreferencesRoutes(dashboardApiInstance);
+        await registerGettingStartedSampleRoutes(dashboardApiInstance);
+        await registerSystemRoutes(dashboardApiInstance);
+      },
+      { prefix: '/dashboard/api' },
+    );
+
+    // Health check endpoints for Kubernetes
+    fastify.get('/healthz', async (request, reply) => {
+      return reply.code(200).send({ status: 'ok' });
+    });
+
+    fastify.get('/readyz', async (request, reply) => {
+      return reply.code(200).send({ status: 'ready' });
+    });
+
+    fastify.get('/livez', async (request, reply) => {
+      return reply.code(200).send({ status: 'alive' });
+    });
+
+    // API root endpoint - list all root resources (matching Java Che Server format)
+    // NOTE: OPTIONS requests are handled automatically by @fastify/cors plugin
+    
+    fastify.get('/api', async (request, reply) => {
+      return reply.code(200).send({
+        rootResources: [
+          {
+            path: '/kubernetes/namespace',
+            regex: '/kubernetes/namespace(/.*)?',
+            fqn: 'namespaceRoutes.ts',
+          },
+          {
+            path: '/oauth',
+            regex: '/oauth(/.*)?',
+            fqn: 'oauthRoutes.ts',
+          },
+          {
+            path: '/factory',
+            regex: '/factory(/.*)?',
+            fqn: 'factoryRoutes.ts',
+          },
+          {
+            path: '/scm',
+            regex: '/scm(/.*)?',
+            fqn: 'scmRoutes.ts',
+          },
+          {
+            path: '/system',
+            regex: '/system(/.*)?',
+            fqn: 'systemRoutes.ts',
+          },
+          {
+            path: '/cluster-info',
+            regex: '/cluster-info',
+            fqn: 'clusterInfoRoutes.ts',
+          },
+          {
+            path: '/cluster-config',
+            regex: '/cluster-config',
+            fqn: 'clusterConfigRoutes.ts',
+          },
+          {
+            path: '/server-config',
+            regex: '/server-config',
+            fqn: 'serverConfigRoutes.ts',
+          },
+          {
+            path: '/namespace/:namespace/devworkspaces',
+            regex: '/namespace/[^/]+/devworkspaces(/.*)?',
+            fqn: 'devworkspaceRoutes.ts',
+          },
+          {
+            path: '/namespace/:namespace/devworkspace-templates',
+            regex: '/namespace/[^/]+/devworkspace-templates(/.*)?',
+            fqn: 'devworkspaceTemplateRoutes.ts',
+          },
+          {
+            path: '/devworkspace-resources',
+            regex: '/devworkspace-resources',
+            fqn: 'devworkspaceResourcesRoutes.ts',
+          },
+          {
+            path: '/devworkspace/running-workspaces-cluster-limit-exceeded',
+            regex: '/devworkspace/running-workspaces-cluster-limit-exceeded',
+            fqn: 'devworkspaceClusterRoutes.ts',
+          },
+          {
+            path: '/namespace/:namespace/pods',
+            regex: '/namespace/[^/]+/pods',
+            fqn: 'podsRoutes.ts',
+          },
+          {
+            path: '/namespace/:namespace/events',
+            regex: '/namespace/[^/]+/events',
+            fqn: 'eventsRoutes.ts',
+          },
+          {
+            path: '/editors',
+            regex: '/editors(/.*)?',
+            fqn: 'editorsRoutes.ts',
+          },
+          {
+            path: '/userprofile/:namespace',
+            regex: '/userprofile/[^/]+',
+            fqn: 'userProfileRoutes.ts',
+          },
+          {
+            path: '/namespace/:namespace/ssh',
+            regex: '/namespace/[^/]+/ssh(/.*)?',
+            fqn: 'sshKeysRoutes.ts',
+          },
+          {
+            path: '/namespace/:namespace/personal-access-token',
+            regex: '/namespace/[^/]+/personal-access-token(/.*)?',
+            fqn: 'personalAccessTokenRoutes.ts',
+          },
+          {
+            path: '/namespace/:namespace/gitconfig',
+            regex: '/namespace/[^/]+/gitconfig',
+            fqn: 'gitConfigRoutes.ts',
+          },
+          {
+            path: '/namespace/:namespace/dockerconfig',
+            regex: '/namespace/[^/]+/dockerconfig',
+            fqn: 'dockerConfigRoutes.ts',
+          },
+          {
+            path: '/workspace-preferences',
+            regex: '/workspace-preferences(/.*)?',
+            fqn: 'workspacePreferencesRoutes.ts',
+          },
+          {
+            path: '/getting-started-sample',
+            regex: '/getting-started-sample',
+            fqn: 'gettingStartedSampleRoutes.ts',
+          },
+          {
+            path: '/openapi.{type:json|yaml}',
+            regex: '/openapi\\.(json|yaml)',
+            fqn: 'swagger (built-in)',
+          },
+          {
+            path: '/',
+            regex: '(/.*)?',
+            fqn: 'index.ts (API Info)',
+          },
+        ],
+      });
+    });
+
+    // Dashboard API root endpoint
+    // NOTE: OPTIONS requests are handled automatically by @fastify/cors plugin
+    
+    fastify.get('/dashboard/api', async (request, reply) => {
+      // Return same info as /api
+      return reply.code(200).send({
+        rootResources: [
+          {
+            path: '/kubernetes/namespace',
+            regex: '/kubernetes/namespace(/.*)?',
+            fqn: 'namespaceRoutes.ts',
+          },
+          {
+            path: '/oauth',
+            regex: '/oauth(/.*)?',
+            fqn: 'oauthRoutes.ts',
+          },
+          {
+            path: '/factory',
+            regex: '/factory(/.*)?',
+            fqn: 'factoryRoutes.ts',
+          },
+        ],
+      });
+    });
 
     // Global error handler
     fastify.setErrorHandler((error: Error & { statusCode?: number }, request, reply) => {
@@ -114,34 +375,119 @@ async function start() {
     // Start the server
     await fastify.listen({ port: PORT, host: HOST });
 
-    console.log(`\n🚀 Kubernetes Namespace Provisioner API (Fastify) is running on port ${PORT}`);
-    console.log(`\n📚 API Documentation:`);
-    console.log(`   Swagger UI: http://localhost:${PORT}/swagger`);
-    console.log(`   OpenAPI JSON: http://localhost:${PORT}/swagger/json`);
-    console.log(`   OpenAPI YAML: http://localhost:${PORT}/swagger/yaml`);
-    console.log(`\n🔗 Endpoints:`);
-    console.log(`   POST http://localhost:${PORT}/kubernetes/namespace/provision`);
-    console.log(`   GET  http://localhost:${PORT}/kubernetes/namespace`);
-    console.log(`   POST http://localhost:${PORT}/factory/resolver`);
-    console.log(`   POST http://localhost:${PORT}/factory/token/refresh`);
-    console.log(`   GET  http://localhost:${PORT}/oauth`);
-    console.log(`   GET  http://localhost:${PORT}/oauth/token`);
-    console.log(`   DELETE http://localhost:${PORT}/oauth/token`);
-    console.log(`   GET  http://localhost:${PORT}/scm/resolve`);
-    console.log(`   GET  http://localhost:${PORT}/health\n`);
+    logger.info(`\n🚀 Eclipse Che Next API Server (Fastify) is running on port ${PORT}`);
+    logger.info(`\n📚 API Documentation:`);
+    logger.info(`   Swagger UI: http://localhost:${PORT}/swagger`);
+    logger.info(`   OpenAPI JSON: http://localhost:${PORT}/swagger/json`);
+    logger.info(`   OpenAPI YAML: http://localhost:${PORT}/swagger/yaml`);
+    logger.info(`\n🔗 Endpoints:`);
+    logger.info(`\n   Cluster & Server Config:`);
+    logger.info(`   GET  http://localhost:${PORT}/api/cluster-info`);
+    logger.info(`   GET  http://localhost:${PORT}/api/cluster-config`);
+    logger.info(`   GET  http://localhost:${PORT}/api/server-config`);
+    logger.info(`\n   Kubernetes Namespace:`);
+    logger.info(`   POST http://localhost:${PORT}/api/kubernetes/namespace/provision`);
+    logger.info(`   GET  http://localhost:${PORT}/api/kubernetes/namespace`);
+    logger.info(`\n   DevWorkspace Management:`);
+    logger.info(`   GET  http://localhost:${PORT}/api/namespace/:namespace/devworkspaces`);
+    logger.info(`   POST http://localhost:${PORT}/api/namespace/:namespace/devworkspaces`);
+    logger.info(`   GET  http://localhost:${PORT}/api/namespace/:namespace/devworkspacetemplates`);
+    logger.info(`   POST http://localhost:${PORT}/api/devworkspace-resources`);
+    logger.info(`\n   Monitoring & Info:`);
+    logger.info(`   GET  http://localhost:${PORT}/api/namespace/:namespace/pods`);
+    logger.info(`   GET  http://localhost:${PORT}/api/namespace/:namespace/events`);
+    logger.info(`   GET  http://localhost:${PORT}/api/editors`);
+    logger.info(`   GET  http://localhost:${PORT}/api/editors/devfile?che-editor=<id>`);
+    logger.info(`   GET  http://localhost:${PORT}/api/userprofile/:namespace`);
+    logger.info(`\n   Factory Resolver:`);
+    logger.info(`   POST http://localhost:${PORT}/api/factory/resolver`);
+    logger.info(`   POST http://localhost:${PORT}/api/factory/token/refresh`);
+    logger.info(`\n   OAuth:`);
+    logger.info(`   GET  http://localhost:${PORT}/api/oauth`);
+    logger.info(`   GET  http://localhost:${PORT}/api/oauth/token`);
+    logger.info(`   DELETE http://localhost:${PORT}/api/oauth/token`);
+    logger.info(`   GET  http://localhost:${PORT}/api/oauth/authenticate`);
+    logger.info(`   GET  http://localhost:${PORT}/api/oauth/callback`);
+    logger.info(`\n   SCM & Data:`);
+    logger.info(`   GET  http://localhost:${PORT}/api/scm/resolve`);
+    logger.info(`   POST http://localhost:${PORT}/api/data/resolver`);
+    logger.info(`\n   Health:`);
+    logger.info(`   GET  http://localhost:${PORT}/health\n`);
   } catch (err) {
     fastify.log.error(err);
+    console.error('Error starting server:', err);
+
+    // Close the server properly before exiting
+    try {
+      await fastify.close();
+      logger.info('Server closed after startup error');
+    } catch (closeErr) {
+      logger.error({ error: closeErr }, 'Error closing server');
+    }
+
     process.exit(1);
   }
 }
 
+// Track if shutdown is already in progress
+let isShuttingDown = false;
+
 // Handle shutdown gracefully
-['SIGINT', 'SIGTERM'].forEach(signal => {
-  process.on(signal, async () => {
-    fastify.log.info('Shutting down gracefully...');
-    await fastify.close();
-    process.exit(0);
-  });
+const shutdown = (signal: string) => {
+  if (isShuttingDown) {
+    logger.info({ signal }, 'Shutdown already in progress, ignoring signal');
+    return;
+  }
+
+  isShuttingDown = true;
+  logger.info(`\nReceived ${signal}, shutting down gracefully...`);
+
+  // Close the server
+  fastify
+    .close()
+    .then(() => {
+      // Using exec for simple commands
+      exec('lsof -ti tcp:8080 | xargs kill', (error, stdout, stderr) => {
+        if (error) {
+          logger.error({ error }, `exec error`);
+          return;
+        }
+        if (stdout) logger.info({ stdout }, `exec stdout`);
+        if (stderr) logger.error({ stderr }, `exec stderr`);
+      });
+      logger.info('Server closed successfully');
+      process.exit(0);
+    })
+    .catch(err => {
+      logger.error({ error: err }, 'Error during shutdown');
+      process.exit(1);
+    });
+
+  // Force exit after 5 seconds if graceful shutdown fails
+  const forceExitTimer = setTimeout(() => {
+    logger.error('Could not close connections in time, forcefully shutting down');
+    process.exit(1);
+  }, 5000);
+
+  // Unref the timer so it doesn't prevent Node.js from exiting if shutdown completes
+  forceExitTimer.unref();
+};
+
+// Handle different signals
+process.on('SIGINT', () => shutdown('SIGINT'));
+process.on('SIGTERM', () => shutdown('SIGTERM'));
+process.on('SIGUSR2', () => shutdown('SIGUSR2')); // Nodemon uses SIGUSR2
+
+// Uncaught exception handler
+process.on('uncaughtException', err => {
+  logger.error({ error: err }, 'Uncaught exception');
+  shutdown('uncaughtException');
+});
+
+// Unhandled rejection handler
+process.on('unhandledRejection', (reason, promise) => {
+  logger.error({ reason, promise }, 'Unhandled rejection');
+  shutdown('unhandledRejection');
 });
 
 // Start the application

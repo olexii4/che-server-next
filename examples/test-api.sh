@@ -1,13 +1,13 @@
 #!/bin/bash
 
-# Test script for Kubernetes Namespace Provisioner API
+# Test script for Eclipse Che Next API Server
 # This script demonstrates how to use the API endpoints
 
 API_URL="http://localhost:8080"
 USERNAME="johndoe"
 USERID="user123"
 
-echo "🧪 Testing Kubernetes Namespace Provisioner API"
+echo "🧪 Testing Eclipse Che Next API Server"
 echo "================================================"
 echo ""
 

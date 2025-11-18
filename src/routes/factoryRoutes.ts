@@ -15,6 +15,7 @@ import { FactoryService } from '../services/FactoryService';
 import { PersonalAccessTokenManager } from '../services/PersonalAccessTokenManager';
 import { AuthorisationRequestManager } from '../services/AuthorisationRequestManager';
 import { FactoryResolverParams, FACTORY_CONSTANTS } from '../models/FactoryModels';
+import { UnauthorizedException } from '../models/UnauthorizedException';
 
 /**
  * Register Factory routes
@@ -27,7 +28,7 @@ export async function registerFactoryRoutes(fastify: FastifyInstance): Promise<v
   const authorisationRequestManager = new AuthorisationRequestManager();
   const factoryService = new FactoryService(
     personalAccessTokenManager,
-    authorisationRequestManager
+    authorisationRequestManager,
   );
 
   /**
@@ -42,28 +43,70 @@ export async function registerFactoryRoutes(fastify: FastifyInstance): Promise<v
       schema: {
         tags: ['factory'],
         summary: 'Resolve factory from URL',
-        description: 'Create factory by providing map of parameters',
+        description: `Create factory by providing repository URL. Works with GitHub, GitLab, and Bitbucket repositories.
+
+**Examples:**
+- GitHub: https://github.com/eclipse-che/che-dashboard.git
+- GitLab: https://gitlab.com/user/project.git
+- Bitbucket: https://bitbucket.org/workspace/repo.git`,
         security: [{ BearerAuth: [] }, { BasicAuth: [] }],
-        querystring: {
-          type: 'object',
-          properties: {
-            validate: {
-              type: 'boolean',
-              description: 'Validate factory parameters',
-            },
-          },
-        },
         body: {
           type: 'object',
+          required: ['url'],
           properties: {
-            url: { type: 'string' },
-            validate: { type: 'boolean' },
+            url: {
+              type: 'string',
+              description:
+                'Repository URL (e.g., https://github.com/eclipse-che/che-dashboard.git)',
+            },
           },
         },
         response: {
           200: {
             description: 'Factory resolved successfully',
             type: 'object',
+            additionalProperties: true,
+            example: {
+              v: '4.0',
+              source: 'devfile.yaml',
+              devfile: {
+                schemaVersion: '2.1.0',
+                metadata: {
+                  name: 'che-dashboard',
+                },
+              },
+              scm_info: {
+                clone_url: 'https://github.com/eclipse-che/che-dashboard.git',
+                scm_provider: 'github',
+              },
+              links: [
+                {
+                  href: 'http://localhost:8080/api/scm/resolve?repository=https://github.com/eclipse-che/che-dashboard.git&file=devfile.yaml',
+                  method: 'GET',
+                  rel: 'self',
+                },
+                {
+                  href: 'http://localhost:8080/api/scm/resolve?repository=https://github.com/eclipse-che/che-dashboard.git&file=devfile.yaml',
+                  method: 'GET',
+                  rel: 'devfile.yaml content',
+                },
+                {
+                  href: 'http://localhost:8080/api/scm/resolve?repository=https://github.com/eclipse-che/che-dashboard.git&file=.che/che-editor.yaml',
+                  method: 'GET',
+                  rel: '.che/che-editor.yaml content',
+                },
+                {
+                  href: 'http://localhost:8080/api/scm/resolve?repository=https://github.com/eclipse-che/che-dashboard.git&file=.che/che-theia-plugins.yaml',
+                  method: 'GET',
+                  rel: '.che/che-theia-plugins.yaml content',
+                },
+                {
+                  href: 'http://localhost:8080/api/scm/resolve?repository=https://github.com/eclipse-che/che-dashboard.git&file=.vscode/extensions.json',
+                  method: 'GET',
+                  rel: '.vscode/extensions.json content',
+                },
+              ],
+            },
           },
           400: {
             description: 'Bad Request',
@@ -74,11 +117,29 @@ export async function registerFactoryRoutes(fastify: FastifyInstance): Promise<v
             },
           },
           401: {
-            description: 'Unauthorized',
+            description: 'Unauthorized - OAuth authentication required',
             type: 'object',
             properties: {
-              error: { type: 'string' },
+              errorCode: { type: 'number' },
               message: { type: 'string' },
+              attributes: {
+                type: 'object',
+                properties: {
+                  oauth_provider: { type: 'string' },
+                  oauth_version: { type: 'string' },
+                  oauth_authentication_url: { type: 'string' },
+                },
+              },
+            },
+            example: {
+              errorCode: 401,
+              message: 'SCM Authentication required',
+              attributes: {
+                oauth_provider: 'github',
+                oauth_version: '2.0',
+                oauth_authentication_url:
+                  'http://localhost:8080/api/oauth/authenticate?oauth_provider=github&scope=repo&request_method=POST&signature_method=rsa',
+              },
             },
           },
           500: {
@@ -92,25 +153,19 @@ export async function registerFactoryRoutes(fastify: FastifyInstance): Promise<v
           },
         },
       },
-      onRequest: [fastify.authenticate, fastify.requireAuth],
+      // Only authenticate if header is present, don't require it for public repos
+      onRequest: [fastify.authenticate],
     },
     async (request: FastifyRequest, reply: FastifyReply) => {
       try {
-        // Ensure user is authenticated
-        if (!request.subject) {
-          return reply.code(401).send({
-            error: 'Unauthorized',
-            message: 'Authentication required',
-          });
-        }
-
         // Get parameters from request body
         const parameters: FactoryResolverParams = (request.body as any) || {};
 
-        // Get validate query parameter
-        const query = request.query as any;
-        const validate = query[FACTORY_CONSTANTS.VALIDATE_PARAMETER] === 'true';
-        parameters.validate = validate;
+        // Pass Authorization header for private repository access
+        const authorizationHeader = request.headers.authorization;
+        if (authorizationHeader) {
+          parameters.authorization = authorizationHeader;
+        }
 
         // Resolve factory
         const factory = await factoryService.resolveFactory(parameters);
@@ -119,6 +174,16 @@ export async function registerFactoryRoutes(fastify: FastifyInstance): Promise<v
         return reply.code(200).send(factory);
       } catch (error: any) {
         fastify.log.error('Error resolving factory:', error);
+
+        // Check for UnauthorizedException (OAuth authentication required)
+        if (error instanceof UnauthorizedException) {
+          return reply.code(401).send(error.toJSON());
+        }
+
+        // Also check by name in case instanceof doesn't work due to module loading
+        if (error.name === 'UnauthorizedException' && error.toJSON) {
+          return reply.code(401).send(error.toJSON());
+        }
 
         // Check for specific error types
         if (
@@ -145,7 +210,7 @@ export async function registerFactoryRoutes(fastify: FastifyInstance): Promise<v
           details: error.stack,
         });
       }
-    }
+    },
   );
 
   /**
@@ -247,6 +312,6 @@ export async function registerFactoryRoutes(fastify: FastifyInstance): Promise<v
           details: error.stack,
         });
       }
-    }
+    },
   );
 }

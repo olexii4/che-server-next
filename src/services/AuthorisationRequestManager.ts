@@ -9,6 +9,7 @@
  * Contributors:
  *   Red Hat, Inc. - initial API and implementation
  */
+import { logger } from '../utils/logger';
 
 /**
  * Authorization Request Manager
@@ -37,7 +38,7 @@ export class AuthorisationRequestManager {
    */
   store(providerName: string): void {
     this.rejectedProviders.add(providerName);
-    console.log(`Authorization rejection stored for provider: ${providerName}`);
+    logger.info(`Authorization rejection stored for provider: ${providerName}`);
   }
 
   /**
@@ -47,7 +48,7 @@ export class AuthorisationRequestManager {
    */
   remove(providerName: string): void {
     this.rejectedProviders.delete(providerName);
-    console.log(`Authorization rejection removed for provider: ${providerName}`);
+    logger.info(`Authorization rejection removed for provider: ${providerName}`);
   }
 
   /**
@@ -55,6 +56,6 @@ export class AuthorisationRequestManager {
    */
   clear(): void {
     this.rejectedProviders.clear();
-    console.log('All authorization rejections cleared');
+    logger.info('All authorization rejections cleared');
   }
 }

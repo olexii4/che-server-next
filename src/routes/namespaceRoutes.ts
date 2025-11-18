@@ -14,6 +14,8 @@ import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { NamespaceProvisioner } from '../services/NamespaceProvisioner';
 import { KubernetesNamespaceFactory } from '../services/KubernetesNamespaceFactory';
 import { NamespaceResolutionContextImpl } from '../models/NamespaceResolutionContext';
+import { getKubeConfig } from '../helpers/getKubernetesClient';
+import { getServiceAccountToken } from '../helpers/getServiceAccountToken';
 
 /**
  * Register Kubernetes namespace routes
@@ -22,11 +24,7 @@ import { NamespaceResolutionContextImpl } from '../models/NamespaceResolutionCon
  * org.eclipse.che.workspace.infrastructure.kubernetes.api.server.KubernetesNamespaceService
  */
 export async function registerNamespaceRoutes(fastify: FastifyInstance): Promise<void> {
-  // Initialize services
-  const namespaceFactory = new KubernetesNamespaceFactory(
-    process.env.NAMESPACE_TEMPLATE || 'che-<username>'
-  );
-  const namespaceProvisioner = new NamespaceProvisioner(namespaceFactory);
+  const namespaceTemplate = process.env.NAMESPACE_TEMPLATE || 'che-<username>';
 
   /**
    * GET /kubernetes/namespace
@@ -56,6 +54,21 @@ export async function registerNamespaceRoutes(fastify: FastifyInstance): Promise
                 },
               },
             },
+            example: [
+              {
+                name: 'user-che',
+                attributes: {
+                  phase: 'Active',
+                  default: 'true',
+                },
+              },
+              {
+                name: 'user-workspace-1',
+                attributes: {
+                  phase: 'Active',
+                },
+              },
+            ],
           },
           401: {
             description: 'Unauthorized',
@@ -80,6 +93,22 @@ export async function registerNamespaceRoutes(fastify: FastifyInstance): Promise
     },
     async (request: FastifyRequest, reply: FastifyReply) => {
       try {
+        // Use service account token for listing namespaces (cluster-level operation)
+        // The service account has permissions to list all che namespaces
+        const serviceAccountToken = getServiceAccountToken();
+        if (!serviceAccountToken) {
+          return reply.code(500).send({
+            error: 'Internal Server Error',
+            message: 'Service account token not available',
+          });
+        }
+
+        // Create KubeConfig with service account token
+        const kubeConfig = getKubeConfig(serviceAccountToken);
+
+        // Create factory with service account config
+        const namespaceFactory = new KubernetesNamespaceFactory(namespaceTemplate, kubeConfig);
+
         const namespaces = await namespaceFactory.list();
         return reply.code(200).send(namespaces);
       } catch (error: any) {
@@ -90,7 +119,7 @@ export async function registerNamespaceRoutes(fastify: FastifyInstance): Promise
           details: error.message,
         });
       }
-    }
+    },
   );
 
   /**
@@ -118,6 +147,14 @@ export async function registerNamespaceRoutes(fastify: FastifyInstance): Promise
               attributes: {
                 type: 'object',
                 additionalProperties: { type: 'string' },
+              },
+            },
+            example: {
+              name: 'user-che',
+              attributes: {
+                phase: 'Active',
+                default: 'true',
+                creationTimestamp: '2025-11-20T14:00:00Z',
               },
             },
           },
@@ -152,7 +189,25 @@ export async function registerNamespaceRoutes(fastify: FastifyInstance): Promise
           });
         }
 
+        // Use service account token for namespace creation (cluster-level operation)
+        // The service account has permissions to create/manage namespaces
+        const serviceAccountToken = getServiceAccountToken();
+        if (!serviceAccountToken) {
+          return reply.code(500).send({
+            error: 'Internal Server Error',
+            message: 'Service account token not available',
+          });
+        }
+
+        // Create KubeConfig with service account token
+        const kubeConfig = getKubeConfig(serviceAccountToken);
+
+        // Create factory and provisioner with service account config
+        const namespaceFactory = new KubernetesNamespaceFactory(namespaceTemplate, kubeConfig);
+        const namespaceProvisioner = new NamespaceProvisioner(namespaceFactory);
+
         // Create namespace resolution context from authenticated subject
+        // This provides user identification for namespace naming (e.g., che-<username>)
         const context = new NamespaceResolutionContextImpl(request.subject);
 
         // Provision the namespace
@@ -168,6 +223,6 @@ export async function registerNamespaceRoutes(fastify: FastifyInstance): Promise
           details: error.stack,
         });
       }
-    }
+    },
   );
 }

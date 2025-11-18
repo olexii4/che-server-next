@@ -60,11 +60,11 @@ export interface IdeConfig {
  * SCM (Source Control Management) information
  */
 export interface ScmInfo {
-  cloneUrl?: string;
+  clone_url?: string;
   branch?: string;
-  scmProviderName?: string;
-  scmProviderUrl?: string;
-  repositoryId?: string;
+  scm_provider?: string;
+  scm_provider_url?: string;
+  repository_id?: string;
 }
 
 /**
@@ -122,8 +122,8 @@ export interface FactoryResolverParams {
   /** URL of the factory source */
   url?: string;
 
-  /** Whether to validate the factory */
-  validate?: boolean;
+  /** Authorization header for private repository access */
+  authorization?: string;
 
   /** Additional custom parameters */
   [key: string]: string | boolean | undefined;
@@ -143,9 +143,6 @@ export interface FactoryTokenRefreshParams {
 export const FACTORY_CONSTANTS = {
   /** URL parameter name */
   URL_PARAMETER_NAME: 'url',
-
-  /** Validate query parameter */
-  VALIDATE_PARAMETER: 'validate',
 
   /** Current factory version */
   CURRENT_VERSION: '4.0',

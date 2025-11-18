@@ -14,59 +14,86 @@
  * Swagger/OpenAPI configuration for Fastify
  *
  * Configures @fastify/swagger and @fastify/swagger-ui plugins
+ * Using dynamic mode similar to Eclipse Che Dashboard
  */
 import { FastifyInstance } from 'fastify';
 import fastifySwagger from '@fastify/swagger';
 import fastifySwaggerUi from '@fastify/swagger-ui';
-import * as fs from 'fs';
-import * as path from 'path';
-import * as YAML from 'yamljs';
+
+import { logger } from '../utils/logger';
+
+const ROUTE_PREFIX = '/swagger';
+
+type MySchema = {
+  headers?: {
+    properties?: {
+      authorization?: string;
+    };
+  };
+};
 
 /**
- * Register Swagger plugins with Fastify
+ * Register Swagger plugins with Fastify in dynamic mode
  */
 export async function setupSwagger(fastify: FastifyInstance): Promise<void> {
-  // Load OpenAPI spec from YAML file (from source directory)
-  // Use src/swagger path instead of dist/swagger since YAML files aren't compiled
-  const openApiPath = path.join(__dirname, '../../src/swagger/openapi.yaml');
-  const openApiSpec = YAML.load(openApiPath);
+  logger.info(`Che Server swagger is running on "${ROUTE_PREFIX}".`);
 
-  // Register @fastify/swagger plugin
   await fastify.register(fastifySwagger, {
-    mode: 'static',
-    specification: {
-      document: openApiSpec,
+    mode: 'dynamic',
+    openapi: {
+      openapi: '3.0.0',
+      info: {
+        title: 'Eclipse Che Server API',
+        description:
+          'API for Eclipse Che Server - Namespace Provisioning, Factory Resolution, and SCM Integration',
+        version: '1.0.0',
+      },
+      servers: [
+        {
+          url: 'http://localhost:8080',
+          description: 'Development server',
+        },
+      ],
+      components: {
+        securitySchemes: {
+          BearerAuth: {
+            type: 'http',
+            scheme: 'bearer',
+            bearerFormat: 'JWT',
+            description: 'Bearer token authentication',
+          },
+          BasicAuth: {
+            type: 'http',
+            scheme: 'basic',
+            description: 'Basic authentication',
+          },
+        },
+      },
+    },
+    hideUntagged: false,
+    transform: ({ schema, url }) => {
+      const mySchema = schema as MySchema;
+      // Remove authorization header from schema to avoid duplication
+      if (mySchema?.headers?.properties?.authorization) {
+        delete mySchema.headers.properties.authorization;
+      }
+      return { schema: mySchema, url };
     },
   });
 
-  // Register @fastify/swagger-ui plugin
   await fastify.register(fastifySwaggerUi, {
-    routePrefix: '/swagger',
+    routePrefix: ROUTE_PREFIX,
     uiConfig: {
-      docExpansion: 'list',
+      tryItOutEnabled: true,
+      validatorUrl: null,
+      layout: 'BaseLayout',
       deepLinking: true,
       displayRequestDuration: true,
       filter: true,
-      showExtensions: true,
-      showCommonExtensions: true,
       syntaxHighlight: {
         activate: true,
         theme: 'monokai',
       },
     },
-    staticCSP: true,
-    transformStaticCSP: header => header,
-    transformSpecification: (swaggerObject, req, reply) => {
-      return swaggerObject;
-    },
-    transformSpecificationClone: true,
   });
-}
-
-/**
- * Get OpenAPI specification as JSON
- */
-export function getOpenApiSpec(): any {
-  const openApiPath = path.join(__dirname, '../../src/swagger/openapi.yaml');
-  return YAML.load(openApiPath);
 }
