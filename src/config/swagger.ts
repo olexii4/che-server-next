@@ -38,6 +38,32 @@ type MySchema = {
 export async function setupSwagger(fastify: FastifyInstance): Promise<void> {
   logger.info(`Che Server swagger is running on "${ROUTE_PREFIX}".`);
 
+  // Dynamically determine server URL from environment or use defaults
+  const getServerUrl = (): string => {
+    // Priority:
+    // 1. CHE_API (from Che Operator) - full URL with /api
+    // 2. CHE_API_ENDPOINT - full URL with /api
+    // 3. Constructed from CHE_HOST - for OpenShift/Kubernetes
+    // 4. Constructed from HOST and PORT - for local development
+    if (process.env.CHE_API) {
+      return process.env.CHE_API.replace(/\/api\/?$/, '');
+    }
+    if (process.env.CHE_API_ENDPOINT) {
+      return process.env.CHE_API_ENDPOINT.replace(/\/api\/?$/, '');
+    }
+    if (process.env.CHE_HOST) {
+      // CHE_HOST is external hostname (e.g., eclipse-che.apps.xxx.com)
+      const protocol = process.env.CHE_INFRA_OPENSHIFT_TLS__ENABLED === 'true' ? 'https' : 'http';
+      return `${protocol}://${process.env.CHE_HOST}`;
+    }
+    // Local development fallback
+    const port = process.env.CHE_PORT || process.env.PORT || '8080';
+    return `http://localhost:${port}`;
+  };
+
+  const serverUrl = getServerUrl();
+  const isProduction = process.env.NODE_ENV === 'production';
+
   await fastify.register(fastifySwagger, {
     mode: 'dynamic',
     openapi: {
@@ -50,8 +76,8 @@ export async function setupSwagger(fastify: FastifyInstance): Promise<void> {
       },
       servers: [
         {
-          url: 'http://localhost:8080',
-          description: 'Development server',
+          url: serverUrl,
+          description: isProduction ? 'Production server' : 'Development server',
         },
       ],
       components: {
