@@ -45,7 +45,7 @@ This TypeScript project is based on:
 - ✅ POST `/api/devworkspace-resources` - Generate DevWorkspace YAML from devfile
 - ✅ GET `/api/devworkspace/running-workspaces-cluster-limit-exceeded` - Check cluster limits
 
-**📖 See [PHASE_2_COMPLETE.md](PHASE_2_COMPLETE.md) for DevWorkspace implementation details**
+**📖 See [docs/DASHBOARD_BACKEND_API_IMPLEMENTATION.md](docs/DASHBOARD_BACKEND_API_IMPLEMENTATION.md) for DevWorkspace implementation details**
 
 ### 4. Monitoring & Info APIs ⭐ NEW
 - ✅ GET `/api/namespace/:namespace/pods` - List pods in a namespace
@@ -54,7 +54,7 @@ This TypeScript project is based on:
 - ✅ GET `/api/editors/devfile?che-editor=<id>` - Get specific editor devfile (YAML)
 - ✅ GET `/api/userprofile/:namespace` - Get user profile (username, email)
 
-**📖 See [PHASE_4_COMPLETE.md](PHASE_4_COMPLETE.md) for Monitoring & Info APIs implementation details**
+**📖 See [docs/DASHBOARD_BACKEND_API_IMPLEMENTATION.md](docs/DASHBOARD_BACKEND_API_IMPLEMENTATION.md) for Monitoring & Info APIs implementation details**
 
 ### 5. Factory Management
 
