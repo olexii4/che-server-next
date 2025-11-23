@@ -23,7 +23,7 @@ export interface UserProfile {
 
 /**
  * Service for managing User Profiles
- * 
+ *
  * Provides methods to get user profile information.
  * User profiles are stored as Secrets in the user's namespace.
  */
@@ -59,4 +59,3 @@ export class UserProfileService {
     }
   }
 }
-

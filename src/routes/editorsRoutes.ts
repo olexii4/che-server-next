@@ -178,4 +178,3 @@ export async function registerEditorsRoutes(fastify: FastifyInstance): Promise<v
     },
   );
 }
-

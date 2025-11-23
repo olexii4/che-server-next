@@ -248,4 +248,3 @@ export async function registerWorkspacePreferencesRoutes(fastify: FastifyInstanc
     },
   );
 }
-

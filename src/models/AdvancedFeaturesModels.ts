@@ -95,4 +95,3 @@ export interface StreamedFile {
   stream: NodeJS.ReadableStream;
   size: number;
 }
-

@@ -666,7 +666,7 @@ export class BitbucketFileResolver implements ScmFileResolver {
             // For Bitbucket, manually construct URL with different branch
             // Extract components from the original URL
             const urlMatch = repository.match(
-              /https?:\/\/[^@]*@?bitbucket\.org\/([^\/]+)\/([^\/\.]+)/,
+              /https?:\/\/[^@]*@?bitbucket\.org\/([^/]+)\/([^/.]+)/,
             );
             if (urlMatch) {
               const workspace = urlMatch[1];
@@ -746,9 +746,7 @@ export class BitbucketFileResolver implements ScmFileResolver {
           );
 
           // Extract workspace and repo from URL
-          const urlMatch = repository.match(
-            /https?:\/\/[^@]*@?bitbucket\.org\/([^\/]+)\/([^\/\.]+)/,
-          );
+          const urlMatch = repository.match(/https?:\/\/[^@]*@?bitbucket\.org\/([^/]+)\/([^/.]+)/);
           if (urlMatch) {
             const workspace = urlMatch[1];
             const repo = urlMatch[2];
@@ -1240,7 +1238,7 @@ export class AzureDevOpsFileResolver implements ScmFileResolver {
 
     if (url.includes('dev.azure.com')) {
       // Format: https://dev.azure.com/{organization}/{project}/_git/{repository}
-      const match = url.match(/dev\.azure\.com\/([^\/]+)\/([^\/]+)\/_git\/([^\/]+)/);
+      const match = url.match(/dev\.azure\.com\/([^/]+)\/([^/]+)\/_git\/([^/]+)/);
       if (match) {
         organization = match[1];
         project = match[2];
@@ -1248,7 +1246,7 @@ export class AzureDevOpsFileResolver implements ScmFileResolver {
       }
     } else if (url.includes('visualstudio.com')) {
       // Format: https://{organization}.visualstudio.com/{project}/_git/{repository}
-      const match = url.match(/([^\.]+)\.visualstudio\.com\/([^\/]+)\/_git\/([^\/]+)/);
+      const match = url.match(/([^.]+)\.visualstudio\.com\/([^/]+)\/_git\/([^/]+)/);
       if (match) {
         organization = match[1];
         project = match[2];

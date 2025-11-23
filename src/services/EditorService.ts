@@ -43,7 +43,7 @@ export interface EditorDevfile {
 
 /**
  * Service for managing Editor definitions
- * 
+ *
  * Provides methods to list and get editor devfiles.
  * Editors are stored as ConfigMaps in the Che namespace.
  */
@@ -115,4 +115,3 @@ export class EditorService {
     return editor;
   }
 }
-

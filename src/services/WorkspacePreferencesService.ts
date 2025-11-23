@@ -13,12 +13,15 @@
 import * as k8s from '@kubernetes/client-node';
 
 import { GitProvider } from '../models/CredentialsModels';
-import { TrustedSourceAll, TrustedSourceUrl, WorkspacePreferences } from '../models/AdvancedFeaturesModels';
+import {
+  TrustedSourceAll,
+  TrustedSourceUrl,
+  WorkspacePreferences,
+} from '../models/AdvancedFeaturesModels';
 import { logger } from '../utils/logger';
 
 const DEV_WORKSPACE_PREFERENCES_CONFIGMAP = 'workspace-preferences-configmap';
 const SKIP_AUTHORIZATION_KEY = 'skip-authorisation';
-const TRUSTED_SOURCES_KEY = 'trusted-sources';
 
 /**
  * Service for managing Workspace Preferences
@@ -102,7 +105,10 @@ export class WorkspacePreferencesService {
   /**
    * Add a trusted source
    */
-  async addTrustedSource(namespace: string, source: TrustedSourceAll | TrustedSourceUrl): Promise<void> {
+  async addTrustedSource(
+    namespace: string,
+    source: TrustedSourceAll | TrustedSourceUrl,
+  ): Promise<void> {
     try {
       const preferences = await this.getWorkspacePreferences(namespace);
       const trustedSources = preferences['trusted-sources'] || [];
@@ -172,4 +178,3 @@ export class WorkspacePreferencesService {
     }
   }
 }
-

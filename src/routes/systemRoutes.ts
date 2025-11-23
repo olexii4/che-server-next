@@ -91,4 +91,3 @@ export async function registerSystemRoutes(fastify: FastifyInstance): Promise<vo
     },
   );
 }
-

@@ -103,11 +103,7 @@ export class DevWorkspaceService {
   /**
    * Update a DevWorkspace using JSON Patch
    */
-  async patch(
-    namespace: string,
-    name: string,
-    patch: PatchOperation[],
-  ): Promise<DevWorkspace> {
+  async patch(namespace: string, name: string, patch: PatchOperation[]): Promise<DevWorkspace> {
     try {
       const options = {
         headers: { 'Content-Type': 'application/json-patch+json' },
@@ -186,4 +182,3 @@ export class DevWorkspaceService {
     }
   }
 }
-

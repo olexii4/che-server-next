@@ -102,8 +102,7 @@ export async function registerServerConfigRoutes(fastify: FastifyInstance): Prom
  */
 function buildServerConfig(): ServerConfig {
   const cheNamespace = process.env.CHE_NAMESPACE || 'eclipse-che';
-  const pluginRegistryInternalURL =
-    process.env.CHE_WORKSPACE_PLUGIN_REGISTRY_INTERNAL_URL || '';
+  const pluginRegistryInternalURL = process.env.CHE_WORKSPACE_PLUGIN_REGISTRY_INTERNAL_URL || '';
   const pluginRegistryURL = process.env.CHE_WORKSPACE_PLUGIN_REGISTRY_URL || '';
 
   // Parse editor and plugins
@@ -127,17 +126,13 @@ function buildServerConfig(): ServerConfig {
   }
 
   // Parse timeouts
-  const inactivityTimeout = parseInt(
-    process.env.CHE_WORKSPACE_INACTIVITY_TIMEOUT || '1800000',
-    10,
-  );
+  const inactivityTimeout = parseInt(process.env.CHE_WORKSPACE_INACTIVITY_TIMEOUT || '1800000', 10);
   const runTimeout = parseInt(process.env.CHE_WORKSPACE_RUN_TIMEOUT || '0', 10);
   const startTimeout = parseInt(process.env.CHE_WORKSPACE_START_TIMEOUT || '300000', 10);
   const axiosRequestTimeout = parseInt(process.env.CHE_AXIOS_REQUEST_TIMEOUT || '10000', 10);
 
   // Parse devfile registry
-  const disableInternalRegistry =
-    process.env.CHE_DISABLE_INTERNAL_REGISTRY === 'true' || false;
+  const disableInternalRegistry = process.env.CHE_DISABLE_INTERNAL_REGISTRY === 'true' || false;
   const externalDevfileRegistriesStr = process.env.CHE_EXTERNAL_DEVFILE_REGISTRIES || '[]';
 
   let externalDevfileRegistries: Array<{ url: string }> = [];
@@ -194,7 +189,10 @@ function buildServerConfig(): ServerConfig {
   const denyGroups = denyGroupsStr ? denyGroupsStr.split(',').map(g => g.trim()) : [];
 
   const hasAdvancedAuth =
-    allowUsers.length > 0 || allowGroups.length > 0 || denyUsers.length > 0 || denyGroups.length > 0;
+    allowUsers.length > 0 ||
+    allowGroups.length > 0 ||
+    denyUsers.length > 0 ||
+    denyGroups.length > 0;
 
   // Editors visibility
   const showDeprecated = process.env.CHE_SHOW_DEPRECATED_EDITORS === 'true';

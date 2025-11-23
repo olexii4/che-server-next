@@ -73,7 +73,7 @@ export async function registerDevWorkspaceRoutes(fastify: FastifyInstance): Prom
         }
 
         const { namespace } = request.params;
-        
+
         // Use service account token for DevWorkspace operations
         // The service account has permissions to manage DevWorkspaces across namespaces
         const serviceAccountToken = getServiceAccountToken();
@@ -164,7 +164,10 @@ export async function registerDevWorkspaceRoutes(fastify: FastifyInstance): Prom
         const service = new DevWorkspaceService(kubeConfig);
 
         const created = await service.create(namespace, devworkspace);
-        return reply.code(201).header('Content-Type', 'application/json').send(JSON.stringify(created));
+        return reply
+          .code(201)
+          .header('Content-Type', 'application/json')
+          .send(JSON.stringify(created));
       } catch (error: any) {
         fastify.log.error({ error }, 'Error creating DevWorkspace');
         return reply.code(error.statusCode || 500).send({
@@ -205,17 +208,14 @@ export async function registerDevWorkspaceRoutes(fastify: FastifyInstance): Prom
       },
       onRequest: [fastify.authenticate, fastify.requireAuth],
     },
-    async (
-      request: FastifyRequest<{ Params: NamespacedWorkspaceParams }>,
-      reply: FastifyReply,
-    ) => {
+    async (request: FastifyRequest<{ Params: NamespacedWorkspaceParams }>, reply: FastifyReply) => {
       try {
         if (!request.subject) {
           return reply.code(401).send({ error: 'Unauthorized' });
         }
 
         const { namespace, workspaceName } = request.params;
-        
+
         // Use service account token for DevWorkspace operations
         const serviceAccountToken = getServiceAccountToken();
         if (!serviceAccountToken) {
@@ -229,7 +229,10 @@ export async function registerDevWorkspaceRoutes(fastify: FastifyInstance): Prom
         const service = new DevWorkspaceService(kubeConfig);
 
         const devworkspace = await service.getByName(namespace, workspaceName);
-        return reply.code(200).header('Content-Type', 'application/json').send(JSON.stringify(devworkspace));
+        return reply
+          .code(200)
+          .header('Content-Type', 'application/json')
+          .send(JSON.stringify(devworkspace));
       } catch (error: any) {
         fastify.log.error({ error }, 'Error getting DevWorkspace');
         return reply.code(error.statusCode || 500).send({
@@ -308,7 +311,10 @@ export async function registerDevWorkspaceRoutes(fastify: FastifyInstance): Prom
         const service = new DevWorkspaceService(kubeConfig);
 
         const updated = await service.patch(namespace, workspaceName, patch);
-        return reply.code(200).header('Content-Type', 'application/json').send(JSON.stringify(updated));
+        return reply
+          .code(200)
+          .header('Content-Type', 'application/json')
+          .send(JSON.stringify(updated));
       } catch (error: any) {
         fastify.log.error({ error }, 'Error patching DevWorkspace');
         return reply.code(error.statusCode || 500).send({
@@ -349,17 +355,14 @@ export async function registerDevWorkspaceRoutes(fastify: FastifyInstance): Prom
       },
       onRequest: [fastify.authenticate, fastify.requireAuth],
     },
-    async (
-      request: FastifyRequest<{ Params: NamespacedWorkspaceParams }>,
-      reply: FastifyReply,
-    ) => {
+    async (request: FastifyRequest<{ Params: NamespacedWorkspaceParams }>, reply: FastifyReply) => {
       try {
         if (!request.subject) {
           return reply.code(401).send({ error: 'Unauthorized' });
         }
 
         const { namespace, workspaceName } = request.params;
-        
+
         // Use service account token for DevWorkspace operations
         const serviceAccountToken = getServiceAccountToken();
         if (!serviceAccountToken) {
@@ -384,4 +387,3 @@ export async function registerDevWorkspaceRoutes(fastify: FastifyInstance): Prom
     },
   );
 }
-

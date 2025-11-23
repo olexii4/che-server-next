@@ -142,4 +142,3 @@ export async function registerDockerConfigRoutes(fastify: FastifyInstance): Prom
     },
   );
 }
-

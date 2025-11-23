@@ -17,7 +17,7 @@ import { logger } from '../utils/logger';
 
 /**
  * Service for managing Kubernetes Events
- * 
+ *
  * Provides methods to list events in a namespace.
  * Used for monitoring workspace events and debugging.
  */
@@ -41,4 +41,3 @@ export class EventService {
     }
   }
 }
-

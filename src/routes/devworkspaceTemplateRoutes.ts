@@ -35,9 +35,7 @@ interface TemplateBody {
  * Provides CRUD operations for DevWorkspaceTemplate custom resources.
  * Note: DELETE operation is excluded (only available in local-run mode in dashboard-backend).
  */
-export async function registerDevWorkspaceTemplateRoutes(
-  fastify: FastifyInstance,
-): Promise<void> {
+export async function registerDevWorkspaceTemplateRoutes(fastify: FastifyInstance): Promise<void> {
   /**
    * GET /api/namespace/:namespace/devworkspacetemplates
    *
@@ -75,7 +73,7 @@ export async function registerDevWorkspaceTemplateRoutes(
         }
 
         const { namespace } = request.params;
-        
+
         // Use service account token for DevWorkspaceTemplate operations
         const serviceAccountToken = getServiceAccountToken();
         if (!serviceAccountToken) {
@@ -89,7 +87,10 @@ export async function registerDevWorkspaceTemplateRoutes(
         const service = new DevWorkspaceTemplateService(kubeConfig);
 
         const templates = await service.listInNamespace(namespace);
-        return reply.code(200).header('Content-Type', 'application/json').send(JSON.stringify(templates));
+        return reply
+          .code(200)
+          .header('Content-Type', 'application/json')
+          .send(JSON.stringify(templates));
       } catch (error: any) {
         fastify.log.error({ error }, 'Error listing DevWorkspaceTemplates');
         return reply.code(error.statusCode || 500).send({
@@ -130,17 +131,14 @@ export async function registerDevWorkspaceTemplateRoutes(
       },
       onRequest: [fastify.authenticate, fastify.requireAuth],
     },
-    async (
-      request: FastifyRequest<{ Params: NamespacedTemplateParams }>,
-      reply: FastifyReply,
-    ) => {
+    async (request: FastifyRequest<{ Params: NamespacedTemplateParams }>, reply: FastifyReply) => {
       try {
         if (!request.subject) {
           return reply.code(401).send({ error: 'Unauthorized' });
         }
 
         const { namespace, templateName } = request.params;
-        
+
         // Use service account token for DevWorkspaceTemplate operations
         const serviceAccountToken = getServiceAccountToken();
         if (!serviceAccountToken) {
@@ -154,7 +152,10 @@ export async function registerDevWorkspaceTemplateRoutes(
         const service = new DevWorkspaceTemplateService(kubeConfig);
 
         const template = await service.getByName(namespace, templateName);
-        return reply.code(200).header('Content-Type', 'application/json').send(JSON.stringify(template));
+        return reply
+          .code(200)
+          .header('Content-Type', 'application/json')
+          .send(JSON.stringify(template));
       } catch (error: any) {
         fastify.log.error({ error }, 'Error getting DevWorkspaceTemplate');
         return reply.code(error.statusCode || 500).send({
@@ -226,7 +227,10 @@ export async function registerDevWorkspaceTemplateRoutes(
         const service = new DevWorkspaceTemplateService(kubeConfig);
 
         const created = await service.create(namespace, template);
-        return reply.code(201).header('Content-Type', 'application/json').send(JSON.stringify(created));
+        return reply
+          .code(201)
+          .header('Content-Type', 'application/json')
+          .send(JSON.stringify(created));
       } catch (error: any) {
         fastify.log.error({ error }, 'Error creating DevWorkspaceTemplate');
         return reply.code(error.statusCode || 500).send({
@@ -305,7 +309,10 @@ export async function registerDevWorkspaceTemplateRoutes(
         const service = new DevWorkspaceTemplateService(kubeConfig);
 
         const updated = await service.patch(namespace, templateName, patch);
-        return reply.code(200).header('Content-Type', 'application/json').send(JSON.stringify(updated));
+        return reply
+          .code(200)
+          .header('Content-Type', 'application/json')
+          .send(JSON.stringify(updated));
       } catch (error: any) {
         fastify.log.error({ error }, 'Error patching DevWorkspaceTemplate');
         return reply.code(error.statusCode || 500).send({
@@ -319,4 +326,3 @@ export async function registerDevWorkspaceTemplateRoutes(
   // Note: DELETE endpoint is NOT implemented as it's only available in local-run mode
   // in the original dashboard-backend implementation
 }
-

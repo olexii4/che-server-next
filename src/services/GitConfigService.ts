@@ -36,10 +36,7 @@ export class GitConfigService {
    */
   async read(namespace: string): Promise<GitConfig> {
     try {
-      const response = await this.coreV1Api.readNamespacedConfigMap(
-        GITCONFIG_CONFIGMAP,
-        namespace,
-      );
+      const response = await this.coreV1Api.readNamespacedConfigMap(GITCONFIG_CONFIGMAP, namespace);
       return this.toGitConfig(response.body);
     } catch (error: any) {
       // If ConfigMap doesn't exist, create it
@@ -180,4 +177,3 @@ export class GitConfigService {
     return gc.user !== undefined && gc.user.email !== undefined && gc.user.name !== undefined;
   }
 }
-

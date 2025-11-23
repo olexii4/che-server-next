@@ -94,4 +94,3 @@ export async function registerEventsRoutes(fastify: FastifyInstance): Promise<vo
     },
   );
 }
-

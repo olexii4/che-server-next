@@ -64,7 +64,7 @@ export async function registerGettingStartedSampleRoutes(fastify: FastifyInstanc
       try {
         // Use service account token for this operation
         const token = getServiceAccountToken();
-        
+
         // If no token (local run), service will return empty array
         if (!token) {
           return reply.code(200).send([]);
@@ -85,4 +85,3 @@ export async function registerGettingStartedSampleRoutes(fastify: FastifyInstanc
     },
   );
 }
-

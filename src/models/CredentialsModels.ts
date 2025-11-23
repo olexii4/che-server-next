@@ -97,4 +97,3 @@ export interface DockerConfig {
 export interface DockerConfigRequest {
   dockerconfig: string;
 }
-

@@ -110,4 +110,3 @@ export class DockerConfigService {
     return secret.data?.[SECRET_KEY] || EMPTY_DOCKERCONFIG;
   }
 }
-

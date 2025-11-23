@@ -84,9 +84,11 @@ export class GettingStartedSamplesService {
 
       return samples;
     } catch (error) {
-      logger.error({ error, namespace: this.cheNamespace }, 'Error listing getting started samples');
+      logger.error(
+        { error, namespace: this.cheNamespace },
+        'Error listing getting started samples',
+      );
       throw error;
     }
   }
 }
-

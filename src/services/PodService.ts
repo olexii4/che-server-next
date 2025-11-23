@@ -17,7 +17,7 @@ import { logger } from '../utils/logger';
 
 /**
  * Service for managing Pods
- * 
+ *
  * Provides methods to list pods in a namespace.
  * Used for monitoring workspace pods and their status.
  */
@@ -41,4 +41,3 @@ export class PodService {
     }
   }
 }
-

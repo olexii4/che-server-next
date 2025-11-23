@@ -95,7 +95,7 @@ function parseBearerToken(token: string): Subject | null {
     // Check for name, username, preferred_username, or extract from email
     // Ignore "undefined" strings and null values
     let username = null;
-    
+
     if (jwtPayload.name && jwtPayload.name !== 'undefined') {
       username = jwtPayload.name;
     } else if (jwtPayload.username && jwtPayload.username !== 'undefined') {
@@ -107,9 +107,11 @@ function parseBearerToken(token: string): Subject | null {
     } else if (jwtPayload.sub) {
       username = jwtPayload.sub;
     }
-    
-    logger.info(`✅ JWT token decoded: name="${jwtPayload.name}", username="${jwtPayload.username}", preferred_username="${jwtPayload.preferred_username}", email="${jwtPayload.email}", sub="${jwtPayload.sub}" -> using username="${username}"`);
-    
+
+    logger.info(
+      `✅ JWT token decoded: name="${jwtPayload.name}", username="${jwtPayload.username}", preferred_username="${jwtPayload.preferred_username}", email="${jwtPayload.email}", sub="${jwtPayload.sub}" -> using username="${username}"`,
+    );
+
     return {
       userId: username || 'che-user',
       userName: username || 'che-user',
@@ -151,7 +153,7 @@ function parseBasicAuth(credentials: string): Subject | null {
 export async function authenticate(request: FastifyRequest, reply: FastifyReply): Promise<void> {
   // Check for Eclipse Che Gateway authentication first
   const gapAuth = request.headers['gap-auth'];
-  
+
   // DEBUG: Log all authentication headers
   logger.info('🔐 Authentication attempt:', {
     path: request.url,
@@ -160,16 +162,16 @@ export async function authenticate(request: FastifyRequest, reply: FastifyReply)
     hasAuthorization: !!request.headers.authorization,
     authType: request.headers.authorization?.split(' ')[0] || 'none',
   });
-  
+
   if (gapAuth) {
     // Gateway passes user identity via gap-auth header
     // Format: username (e.g., "che@eclipse.org" or "admin")
     // Extract just the username part before @ if present
     const fullUsername = gapAuth as string;
     const username = fullUsername.split('@')[0];
-    
+
     logger.info(`✅ Using gap-auth: "${fullUsername}" -> username: "${username}"`);
-    
+
     // Use service account token for Kubernetes operations
     request.subject = {
       userId: username,
@@ -193,7 +195,9 @@ export async function authenticate(request: FastifyRequest, reply: FastifyReply)
     const token = authHeader.substring(7);
     const subject = parseBearerToken(token);
     if (subject) {
-      logger.info(`✅ Bearer token authenticated as: userId="${subject.userId}", userName="${subject.userName}"`);
+      logger.info(
+        `✅ Bearer token authenticated as: userId="${subject.userId}", userName="${subject.userName}"`,
+      );
       request.subject = subject;
       return;
     }
@@ -201,7 +205,9 @@ export async function authenticate(request: FastifyRequest, reply: FastifyReply)
     const credentials = authHeader.substring(6);
     const subject = parseBasicAuth(credentials);
     if (subject) {
-      logger.info(`✅ Basic auth authenticated as: userId="${subject.userId}", userName="${subject.userName}"`);
+      logger.info(
+        `✅ Basic auth authenticated as: userId="${subject.userId}", userName="${subject.userName}"`,
+      );
       request.subject = subject;
       return;
     }

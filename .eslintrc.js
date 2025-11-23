@@ -50,16 +50,9 @@ module.exports = {
         maxEOF: 1,
       },
     ],
-    'notice/notice': [
-      'warn',
-      {
-        templateFile: '.config/copyright.js',
-        onNonMatchingHeader: 'report',
-        messages: {
-          reportAndSkip: 'Missing license header',
-        },
-      },
-    ],
+    // Disabled: We use header-check.js script instead of eslint-plugin-notice
+    // Run: yarn header:check or yarn header:fix
+    'notice/notice': 'off',
     'spaced-comment': 'error',
     'no-warning-comments': [
       'warn',

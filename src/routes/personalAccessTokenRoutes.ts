@@ -105,7 +105,10 @@ export async function registerPersonalAccessTokenRoutes(fastify: FastifyInstance
           properties: {
             tokenName: { type: 'string' },
             cheUserId: { type: 'string' },
-            gitProvider: { type: 'string', enum: ['github', 'gitlab', 'bitbucket', 'azure-devops'] },
+            gitProvider: {
+              type: 'string',
+              enum: ['github', 'gitlab', 'bitbucket', 'azure-devops'],
+            },
             gitProviderEndpoint: { type: 'string' },
             gitProviderOrganization: { type: 'string' },
             isOauth: { type: 'boolean' },
@@ -269,4 +272,3 @@ export async function registerPersonalAccessTokenRoutes(fastify: FastifyInstance
     },
   );
 }
-

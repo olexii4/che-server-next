@@ -94,4 +94,3 @@ export async function registerPodsRoutes(fastify: FastifyInstance): Promise<void
     },
   );
 }
-

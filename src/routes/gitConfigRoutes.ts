@@ -168,4 +168,3 @@ export async function registerGitConfigRoutes(fastify: FastifyInstance): Promise
     },
   );
 }
-

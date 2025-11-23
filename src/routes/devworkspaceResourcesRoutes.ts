@@ -24,9 +24,7 @@ import { axiosInstance } from '../helpers/getCertificateAuthority';
  * Generates DevWorkspace and DevWorkspaceTemplate resources from devfile content.
  * Uses @eclipse-che/che-devworkspace-generator library.
  */
-export async function registerDevWorkspaceResourcesRoutes(
-  fastify: FastifyInstance,
-): Promise<void> {
+export async function registerDevWorkspaceResourcesRoutes(fastify: FastifyInstance): Promise<void> {
   const generator = new DevworkspaceGenerator();
 
   /**
@@ -44,8 +42,7 @@ export async function registerDevWorkspaceResourcesRoutes(
       schema: {
         tags: ['devworkspace-resources'],
         summary: 'Generate DevWorkspace resources',
-        description:
-          'Generate DevWorkspace and DevWorkspaceTemplate YAMLs from devfile content',
+        description: 'Generate DevWorkspace and DevWorkspaceTemplate YAMLs from devfile content',
         body: {
           type: 'object',
           properties: {
@@ -138,4 +135,3 @@ export async function registerDevWorkspaceResourcesRoutes(
     },
   );
 }
-

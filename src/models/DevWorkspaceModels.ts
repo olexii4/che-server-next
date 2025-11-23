@@ -111,4 +111,3 @@ export const DEVWORKSPACE_TEMPLATE_CRD = {
   PLURAL: 'devworkspacetemplates',
   KIND: 'DevWorkspaceTemplate',
 } as const;
-

@@ -135,32 +135,36 @@ async function start() {
     await fastify.register(
       async apiInstance => {
         // Root API endpoint - returns API info (no auth required for CORS preflight)
-        apiInstance.get('/', {
-          schema: {
-            tags: ['api'],
-            summary: 'API root endpoint',
-            description: 'Returns API information and available endpoints',
-            response: {
-              200: {
-                description: 'API information',
-                type: 'object',
-                properties: {
-                  name: { type: 'string' },
-                  version: { type: 'string' },
-                  implementation: { type: 'string' },
-                  docs: { type: 'string' },
+        apiInstance.get(
+          '/',
+          {
+            schema: {
+              tags: ['api'],
+              summary: 'API root endpoint',
+              description: 'Returns API information and available endpoints',
+              response: {
+                200: {
+                  description: 'API information',
+                  type: 'object',
+                  properties: {
+                    name: { type: 'string' },
+                    version: { type: 'string' },
+                    implementation: { type: 'string' },
+                    docs: { type: 'string' },
+                  },
                 },
               },
             },
           },
-        }, async (request, reply) => {
-          return reply.code(200).send({
-            name: 'Eclipse Che Server API',
-            version: '7.x',
-            implementation: 'Node.js/Fastify',
-            docs: '/api/docs',
-          });
-        });
+          async (request, reply) => {
+            return reply.code(200).send({
+              name: 'Eclipse Che Server API',
+              version: '7.x',
+              implementation: 'Node.js/Fastify',
+              docs: '/api/docs',
+            });
+          },
+        );
 
         await registerNamespaceRoutes(apiInstance);
         await registerFactoryRoutes(apiInstance);

@@ -17,20 +17,20 @@ import { logger } from '../utils/logger';
  * Service for Air-Gapped Samples
  *
  * This feature provides offline/air-gapped sample projects.
- * 
+ *
  * IMPLEMENTATION STATUS: Stub
- * 
+ *
  * Full implementation requires:
  * - Filesystem access to /public/dashboard/devfile-registry/air-gap
  * - File streaming for downloads
  * - index.json parsing for sample metadata
- * 
+ *
  * See dashboard-backend/src/devworkspaceClient/services/airGapSampleApi.ts for reference.
  */
 export class AirGapSampleService {
   /**
    * List all air-gapped samples
-   * 
+   *
    * @returns Empty array (no air-gap resources configured)
    */
   async list(): Promise<AirGapSample[]> {
@@ -40,28 +40,27 @@ export class AirGapSampleService {
 
   /**
    * Download a sample project
-   * 
+   *
    * @throws Error indicating this feature is not yet implemented
    */
   async downloadProject(id: string): Promise<StreamedFile> {
     throw new Error(
       'Air-gap sample project download not implemented. ' +
-      'This feature requires filesystem access and file streaming. ' +
-      'See PHASE_5_IMPLEMENTATION_DECISION.md for details.',
+        'This feature requires filesystem access and file streaming. ' +
+        'See PHASE_5_IMPLEMENTATION_DECISION.md for details.',
     );
   }
 
   /**
    * Download a sample devfile
-   * 
+   *
    * @throws Error indicating this feature is not yet implemented
    */
   async downloadDevfile(id: string): Promise<StreamedFile> {
     throw new Error(
       'Air-gap sample devfile download not implemented. ' +
-      'This feature requires filesystem access and file streaming. ' +
-      'See PHASE_5_IMPLEMENTATION_DECISION.md for details.',
+        'This feature requires filesystem access and file streaming. ' +
+        'See PHASE_5_IMPLEMENTATION_DECISION.md for details.',
     );
   }
 }
-

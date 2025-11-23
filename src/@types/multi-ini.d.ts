@@ -11,4 +11,3 @@ declare module 'multi-ini' {
     serialize(data: any): string;
   }
 }
-
