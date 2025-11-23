@@ -193,6 +193,7 @@
 | `escape-string-regexp@2.0.0` | MIT | [clearlydefined](https://clearlydefined.io/definitions/npm/npmjs/-/escape-string-regexp/2.0.0) |
 | `escape-string-regexp@4.0.0` | MIT | [clearlydefined](https://clearlydefined.io/definitions/npm/npmjs/-/escape-string-regexp/4.0.0) |
 | `eslint-config-prettier@9.1.2` | MIT | #11979 |
+| `eslint-plugin-notice@1.0.0` | MIT | [clearlydefined](https://clearlydefined.io/definitions/npm/npmjs/-/eslint-plugin-notice/1.0.0) |
 | [`eslint-plugin-prettier@5.5.4`](https://github.com/prettier/eslint-plugin-prettier#readme) | MIT | [clearlydefined](https://clearlydefined.io/definitions/npm/npmjs/-/eslint-plugin-prettier/5.5.4) |
 | [`eslint-scope@5.1.1`](http://github.com/eslint/eslint-scope) | BSD-2-Clause | [clearlydefined](https://clearlydefined.io/definitions/npm/npmjs/-/eslint-scope/5.1.1) |
 | [`eslint-scope@7.2.2`](http://github.com/eslint/eslint-scope) | BSD-2-Clause | #9916 |
@@ -206,7 +207,6 @@
 | [`estraverse@4.3.0`](http://github.com/estools/estraverse.git) | BSD-2-Clause | #15352 |
 | [`estraverse@5.3.0`](http://github.com/estools/estraverse.git) | BSD-2-Clause | #1557 |
 | [`esutils@2.0.3`](http://github.com/estools/esutils.git) | BSD-2-Clause | #120 |
-| [`events@3.3.0`](git://github.com/Gozala/events.git) | MIT | [clearlydefined](https://clearlydefined.io/definitions/npm/npmjs/-/events/3.3.0) |
 | `execa@5.1.1` | MIT | [clearlydefined](https://clearlydefined.io/definitions/npm/npmjs/-/execa/5.1.1) |
 | [`exit@0.1.2`](git://github.com/cowboy/node-exit.git) | MIT | [clearlydefined](https://clearlydefined.io/definitions/npm/npmjs/-/exit/0.1.2) |
 | [`expect@29.7.0`](https://github.com/jestjs/jest.git) | MIT | [clearlydefined](https://clearlydefined.io/definitions/npm/npmjs/-/expect/29.7.0) |
@@ -219,6 +219,7 @@
 | `file-entry-cache@6.0.1` | MIT | [clearlydefined](https://clearlydefined.io/definitions/npm/npmjs/-/file-entry-cache/6.0.1) |
 | `file-entry-cache@7.0.2` | MIT | [clearlydefined](https://clearlydefined.io/definitions/npm/npmjs/-/file-entry-cache/7.0.2) |
 | [`fill-range@7.1.1`](https://github.com/jonschlinkert/fill-range) | MIT | #14867 |
+| `find-root@1.1.0` | MIT | [clearlydefined](https://clearlydefined.io/definitions/npm/npmjs/-/find-root/1.1.0) |
 | `find-up@4.1.0` | MIT | [clearlydefined](https://clearlydefined.io/definitions/npm/npmjs/-/find-up/4.1.0) |
 | `find-up@5.0.0` | MIT | [clearlydefined](https://clearlydefined.io/definitions/npm/npmjs/-/find-up/5.0.0) |
 | `flat-cache@3.2.0` | MIT | [clearlydefined](https://clearlydefined.io/definitions/npm/npmjs/-/flat-cache/3.2.0) |
@@ -237,7 +238,6 @@
 | `globals@13.24.0` | MIT | #11962 |
 | `globby@11.1.0` | MIT | [clearlydefined](https://clearlydefined.io/definitions/npm/npmjs/-/globby/11.1.0) |
 | [`globjoin@0.1.4`](git+https://github.com/amobiz/globjoin.git) | MIT | [clearlydefined](https://clearlydefined.io/definitions/npm/npmjs/-/globjoin/0.1.4) |
-| [`graceful-fs@4.2.11`](https://github.com/isaacs/node-graceful-fs) | ISC | #7413 |
 | [`graphemer@1.4.0`](https://github.com/flmnt/graphemer.git) | MIT | [clearlydefined](https://clearlydefined.io/definitions/npm/npmjs/-/graphemer/1.4.0) |
 | [`handlebars@4.7.8`](https://github.com/handlebars-lang/handlebars.js.git) | MIT | #9933 |
 | `hard-rejection@2.1.0` | MIT | [clearlydefined](https://clearlydefined.io/definitions/npm/npmjs/-/hard-rejection/2.1.0) |
@@ -334,6 +334,7 @@
 | `meow@10.1.5` | MIT | [clearlydefined](https://clearlydefined.io/definitions/npm/npmjs/-/meow/10.1.5) |
 | `merge-stream@2.0.0` | MIT | [clearlydefined](https://clearlydefined.io/definitions/npm/npmjs/-/merge-stream/2.0.0) |
 | [`merge2@1.4.1`](git@github.com:teambition/merge2.git) | MIT | [clearlydefined](https://clearlydefined.io/definitions/npm/npmjs/-/merge2/1.4.1) |
+| `metric-lcs@0.1.2` | MIT | [clearlydefined](https://clearlydefined.io/definitions/npm/npmjs/-/metric-lcs/0.1.2) |
 | [`micromatch@4.0.8`](https://github.com/micromatch/micromatch) | MIT | #24818 |
 | `mimic-fn@2.1.0` | MIT | [clearlydefined](https://clearlydefined.io/definitions/npm/npmjs/-/mimic-fn/2.1.0) |
 | [`minimatch@10.1.1`](git@github.com:isaacs/minimatch) | BlueOak-1.0.0 | #24537 |
@@ -344,7 +345,7 @@
 | [`neo-async@2.6.2`](git@github.com:suguru03/neo-async.git) | MIT | [clearlydefined](https://clearlydefined.io/definitions/npm/npmjs/-/neo-async/2.6.2) |
 | [`node-int64@0.4.0`](https://github.com/broofa/node-int64) | MIT | [clearlydefined](https://clearlydefined.io/definitions/npm/npmjs/-/node-int64/0.4.0) |
 | [`node-releases@2.0.27`](git+https://github.com/chicoxyzzy/node-releases.git) | MIT | #1954 |
-| [`nodemon@3.1.11`](https://github.com/remy/nodemon.git) | MIT |  |
+| [`nodemon@3.1.11`](https://github.com/remy/nodemon.git) | MIT | [clearlydefined](https://clearlydefined.io/definitions/npm/npmjs/-/nodemon/3.1.11) |
 | [`normalize-package-data@3.0.3`](git://github.com/npm/normalize-package-data.git) | BSD-2-Clause | #11614 |
 | [`normalize-path@3.0.0`](https://github.com/jonschlinkert/normalize-path) | MIT | [clearlydefined](https://clearlydefined.io/definitions/npm/npmjs/-/normalize-path/3.0.0) |
 | `npm-run-path@4.0.1` | MIT | [clearlydefined](https://clearlydefined.io/definitions/npm/npmjs/-/npm-run-path/4.0.1) |
@@ -418,7 +419,6 @@
 | `strip-bom@4.0.0` | MIT | [clearlydefined](https://clearlydefined.io/definitions/npm/npmjs/-/strip-bom/4.0.0) |
 | `strip-final-newline@2.0.0` | MIT | [clearlydefined](https://clearlydefined.io/definitions/npm/npmjs/-/strip-final-newline/2.0.0) |
 | `strip-indent@4.1.1` | MIT | [clearlydefined](https://clearlydefined.io/definitions/npm/npmjs/-/strip-indent/4.1.1) |
-| `strip-json-comments@3.1.1` | MIT | [clearlydefined](https://clearlydefined.io/definitions/npm/npmjs/-/strip-json-comments/3.1.1) |
 | [`style-search@0.1.0`](git+https://github.com/davidtheclark/style-search.git) | ISC | [clearlydefined](https://clearlydefined.io/definitions/npm/npmjs/-/style-search/0.1.0) |
 | `stylelint-config-recommended@13.0.0` | MIT | [clearlydefined](https://clearlydefined.io/definitions/npm/npmjs/-/stylelint-config-recommended/13.0.0) |
 | `stylelint-config-standard@34.0.0` | MIT | [clearlydefined](https://clearlydefined.io/definitions/npm/npmjs/-/stylelint-config-standard/34.0.0) |

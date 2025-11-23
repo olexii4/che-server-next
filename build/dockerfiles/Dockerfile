@@ -20,7 +20,7 @@ COPY yarn.lock /che-server/
 COPY tsconfig.json /che-server/
 
 WORKDIR /che-server
-RUN yarn install --immutable
+RUN yarn install --network-timeout 3600000
 
 COPY src /che-server/src
 COPY webpack.config.common.js /che-server/
@@ -46,8 +46,6 @@ COPY build/dockerfiles/entrypoint.sh /entrypoint.sh
 # Create user and directories with proper permissions
 RUN addgroup -g 1001 user && \
     adduser -u 1001 -G user -D user && \
-    mkdir -p /data /logs && \
-    chmod 0777 /data /logs && \
     chown -R user:user ${CHE_HOME} && \
     chmod -R g+rwX ${CHE_HOME} && \
     chmod +x /entrypoint.sh
