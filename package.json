@@ -21,8 +21,9 @@
     "test:coverage": "yarn run pretest && jest --coverage --no-cache",
     "license:check": "$PWD/scripts/container_tool.sh run --rm -t -v $PWD/:/workspace/project quay.io/che-incubator/dash-licenses:next --check --batch 200",
     "license:generate": "$PWD/scripts/container_tool.sh run --rm -t -v $PWD/:/workspace/project quay.io/che-incubator/dash-licenses:next --batch 200",
-    "header:check": "node .config/license-check.js",
-    "header:fix": "node .config/license-check.js --fix",
+    "header:check": "node header-check.js",
+    "header:check:verbose": "node header-check.js --verbose",
+    "header:fix": "node header-check.js --fix",
     "pretest": "yarn header:check",
     "prebuild": "yarn header:check"
   },
