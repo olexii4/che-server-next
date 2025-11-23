@@ -486,20 +486,38 @@ export class ScmRepositoryFactoryResolver extends BaseFactoryParameterResolver {
         throw error;
       }
       
-      // Improve error message formatting for common cases
-      let errorMessage = error.message;
-      
-      // Make "No devfile found" errors more concise
-      if (errorMessage.includes('No devfile found')) {
-        errorMessage = `Repository does not contain a devfile (tried: devfile.yaml, .devfile.yaml). Please ensure your repository has a valid devfile.`;
+      // If devfile is not found, return a basic factory response instead of error
+      // This matches the Java Che Server behavior
+      if (
+        error.message?.includes('No devfile found') ||
+        error.message?.includes('not found in repository') ||
+        error.message?.includes('Requested file not found')
+      ) {
+        logger.info('No devfile found, returning basic factory response');
+        
+        const scmProvider = this.detectScmProvider(url);
+        const branch = this.extractBranchFromUrl(url);
+        
+        // Return basic factory with empty devfile structure
+        const factory: FactoryDevfileV2 = {
+          source: 'repo',
+          v: FACTORY_CONSTANTS.CURRENT_VERSION,
+          devfile: {
+            schemaVersion: '2.3.0',
+          },
+          scm_info: {
+            clone_url: url,
+            scm_provider: scmProvider,
+            ...(branch && { branch }),
+          },
+          links: this.generateFactoryLinks(url),
+        };
+        
+        return factory;
       }
       
-      // Make "not found" errors more user-friendly
-      if (errorMessage.includes('not found in repository') || errorMessage.includes('Requested file not found')) {
-        errorMessage = `Repository or devfile not found. Please check the URL and ensure the repository exists and contains a devfile.`;
-      }
-      
-      throw new Error(`Failed to resolve factory from ${url}: ${errorMessage}`);
+      // For other errors (parsing, validation, etc.), throw
+      throw new Error(`Failed to resolve factory from ${url}: ${error.message}`);
     }
   }
 
