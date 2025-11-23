@@ -71,11 +71,11 @@ const HOST = process.env.CHE_BIND_ADDRESS || process.env.BIND_ADDRESS || '0.0.0.
 // Register plugins and routes
 async function start() {
   try {
-    // Register CORS with proper headers for file downloads and OPTIONS handling
+    // Register CORS FIRST - must be before any routes for proper OPTIONS handling
     await fastify.register(fastifyCors, {
-      origin: true,
+      origin: true, // Allow all origins (Eclipse Che Gateway will be proxying)
       credentials: true,
-      methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+      methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS', 'HEAD'],
       allowedHeaders: [
         'Content-Type',
         'Authorization',
@@ -85,11 +85,15 @@ async function start() {
         'X-Requested-With',
         'X-Forwarded-Proto',
         'X-Forwarded-Host',
+        'Access-Control-Request-Method',
+        'Access-Control-Request-Headers',
       ],
       exposedHeaders: ['Content-Disposition', 'Content-Type', 'Content-Length'],
-      maxAge: 86400, // 24 hours
-      preflightContinue: false,
-      optionsSuccessStatus: 204,
+      maxAge: 86400, // 24 hours - cache preflight responses
+      preflightContinue: false, // Don't pass OPTIONS to route handlers
+      optionsSuccessStatus: 204, // Return 204 for successful OPTIONS
+      strictPreflight: false, // Be lenient with preflight requests
+      hideOptionsRoute: true, // Hide automatic OPTIONS routes from schema
     });
 
     // Register authentication hooks as decorators
@@ -130,6 +134,34 @@ async function start() {
     // Register route modules with /api prefix (matches Java implementation)
     await fastify.register(
       async apiInstance => {
+        // Root API endpoint - returns API info (no auth required for CORS preflight)
+        apiInstance.get('/', {
+          schema: {
+            tags: ['api'],
+            summary: 'API root endpoint',
+            description: 'Returns API information and available endpoints',
+            response: {
+              200: {
+                description: 'API information',
+                type: 'object',
+                properties: {
+                  name: { type: 'string' },
+                  version: { type: 'string' },
+                  implementation: { type: 'string' },
+                  docs: { type: 'string' },
+                },
+              },
+            },
+          },
+        }, async (request, reply) => {
+          return reply.code(200).send({
+            name: 'Eclipse Che Server API',
+            version: '7.x',
+            implementation: 'Node.js/Fastify',
+            docs: '/api/docs',
+          });
+        });
+
         await registerNamespaceRoutes(apiInstance);
         await registerFactoryRoutes(apiInstance);
         await registerOAuthRoutes(apiInstance);
