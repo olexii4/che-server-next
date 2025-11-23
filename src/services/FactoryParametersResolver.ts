@@ -485,7 +485,21 @@ export class ScmRepositoryFactoryResolver extends BaseFactoryParameterResolver {
       if (error instanceof UnauthorizedException) {
         throw error;
       }
-      throw new Error(`Failed to create factory from repository URL ${url}: ${error.message}`);
+      
+      // Improve error message formatting for common cases
+      let errorMessage = error.message;
+      
+      // Make "No devfile found" errors more concise
+      if (errorMessage.includes('No devfile found')) {
+        errorMessage = `Repository does not contain a devfile (tried: devfile.yaml, .devfile.yaml). Please ensure your repository has a valid devfile.`;
+      }
+      
+      // Make "not found" errors more user-friendly
+      if (errorMessage.includes('not found in repository') || errorMessage.includes('Requested file not found')) {
+        errorMessage = `Repository or devfile not found. Please check the URL and ensure the repository exists and contains a devfile.`;
+      }
+      
+      throw new Error(`Failed to resolve factory from ${url}: ${errorMessage}`);
     }
   }
 
