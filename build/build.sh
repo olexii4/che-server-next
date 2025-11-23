@@ -16,23 +16,21 @@ set -e
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 
-# Source the container tool script
+# Source the container tool script to detect container engine
 CONTAINER_TOOL_SCRIPT="$PROJECT_ROOT/scripts/container_tool.sh"
 
-# Detect container engine (Docker or Podman)
-detect_container_engine() {
-    if command -v podman &> /dev/null && podman info &>/dev/null; then
-        echo "podman"
-    elif command -v docker &> /dev/null && docker info &>/dev/null; then
-        echo "docker"
-    else
-        echo "none"
-    fi
-}
+if [ ! -f "$CONTAINER_TOOL_SCRIPT" ]; then
+    echo "❌ Error: Container tool script not found at $CONTAINER_TOOL_SCRIPT"
+    exit 1
+fi
 
-CONTAINER_ENGINE=$(detect_container_engine)
+# Source the script to get container_engine variable
+source "$CONTAINER_TOOL_SCRIPT"
 
-if [ "$CONTAINER_ENGINE" = "none" ]; then
+# Use the detected container engine (set by container_tool.sh)
+CONTAINER_ENGINE="$container_engine"
+
+if [ -z "$CONTAINER_ENGINE" ]; then
     echo "❌ Error: Neither Docker nor Podman is installed or running"
     echo "   Please install Docker or Podman"
     exit 1
