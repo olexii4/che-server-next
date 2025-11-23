@@ -26,6 +26,60 @@ interface NamespacedParams {
  */
 export async function registerUserProfileRoutes(fastify: FastifyInstance): Promise<void> {
   /**
+   * GET /api/user/id
+   *
+   * Get current user ID
+   *
+   * This endpoint returns the ID of the currently authenticated user.
+   * Compatible with Eclipse Che Server API: https://github.com/eclipse-che/che-server
+   */
+  fastify.get(
+    '/user/id',
+    {
+      schema: {
+        tags: ['user'],
+        summary: 'Get current user ID',
+        description: 'Returns the ID of the currently authenticated user',
+        security: [{ BearerAuth: [] }],
+        response: {
+          200: {
+            description: 'User ID',
+            type: 'string',
+          },
+          401: {
+            description: 'Unauthorized',
+            type: 'object',
+            properties: {
+              error: { type: 'string' },
+              message: { type: 'string' },
+            },
+          },
+        },
+      },
+      onRequest: [fastify.authenticate, fastify.requireAuth],
+    },
+    async (request: FastifyRequest, reply: FastifyReply) => {
+      try {
+        if (!request.subject) {
+          return reply.code(401).send({
+            error: 'Unauthorized',
+            message: 'Authentication required',
+          });
+        }
+
+        // Return the user ID from the authenticated subject
+        return reply.code(200).send(request.subject.userId);
+      } catch (error: any) {
+        fastify.log.error({ error }, 'Error getting user ID');
+        return reply.code(500).send({
+          error: 'Internal Server Error',
+          message: error.message || 'Failed to get user ID',
+        });
+      }
+    },
+  );
+
+  /**
    * GET /api/userprofile/:namespace
    *
    * Get user profile from a namespace

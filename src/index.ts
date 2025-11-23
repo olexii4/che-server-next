@@ -251,6 +251,8 @@ async function start() {
     logger.info(`   GET  http://localhost:${PORT}/api/namespace/:namespace/events`);
     logger.info(`   GET  http://localhost:${PORT}/api/editors`);
     logger.info(`   GET  http://localhost:${PORT}/api/editors/devfile?che-editor=<id>`);
+    logger.info(`\n   User:`);
+    logger.info(`   GET  http://localhost:${PORT}/api/user/id`);
     logger.info(`   GET  http://localhost:${PORT}/api/userprofile/:namespace`);
     logger.info(`\n   Factory Resolver:`);
     logger.info(`   POST http://localhost:${PORT}/api/factory/resolver`);
