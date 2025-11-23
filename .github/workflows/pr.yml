@@ -144,71 +144,17 @@ jobs:
         with:
           script: |
             const { issue: { number: issue_number }, repo: { owner, repo } } = context;
-            const cheServerImage = "${{ env.ORGANIZATION }}/che-server:${{ env.IMAGE_VERSION }}";
-            const patchCommand = `kubectl patch -n eclipse-che "checluster/eclipse-che" --type=json -p='[{"op": "replace", "path": "/spec/components/cheServer/deployment/containers/0/image", "value": "${cheServerImage}"}]'`;
-            const chectlCommand = `chectl server:update --che-operator-cr-patch-yaml=<(cat <<EOF
-kind: CheCluster
-apiVersion: org.eclipse.che/v2
-spec:
-  components:
-    cheServer:
-      deployment:
-        containers:
-          - image: '${cheServerImage}'
-            imagePullPolicy: Always
-            name: che-server
-EOF
-)`;
-            const text = \`
-            ## ✅ Docker image build succeeded
-            
-            **Image:** \\\`${cheServerImage}\\\`
-            
+            const dashboardImage = "${{ env.ORGANIZATION }}/che-dashboard:${{ env.IMAGE_VERSION }}";
+            const patchCommand = `kubectl patch -n eclipse-che "checluster/eclipse-che" --type=json -p="[{\"op\": \"replace\", \"path\": \"/spec/components/cheServer/deployment\", \"value\": {containers: [{image: \"${dashboardImage}\", name: che-server}]}}]"`;
+            const text = `
+            Docker image build succeeded: **${dashboardImage}**
             <details>
-            <summary>📦 Deploy with kubectl patch</summary>
-            
-            \\\`\\\`\\\`bash
+            <summary>kubectl patch command</summary>
+
+            \`\`\`bash
             ${patchCommand}
-            \\\`\\\`\\\`
-            
-            </details>
-            
-            <details>
-            <summary>🚀 Deploy with chectl</summary>
-            
-            \\\`\\\`\\\`bash
-            # Create or update cr-patch.yaml
-            cat > cr-patch.yaml <<EOF
-kind: CheCluster
-apiVersion: org.eclipse.che/v2
-spec:
-  components:
-    cheServer:
-      deployment:
-        containers:
-          - image: '${cheServerImage}'
-            imagePullPolicy: Always
-            name: che-server
-EOF
+            \`\`\`
 
-            # Update Che instance
-            chectl server:update --che-operator-cr-patch-yaml=cr-patch.yaml
-            \\\`\\\`\\\`
-            
             </details>
-            
-            <details>
-            <summary>🐳 Pull and run locally</summary>
-            
-            \\\`\\\`\\\`bash
-            # Pull image
-            docker pull ${cheServerImage}
-            
-            # Run locally
-            docker run -p 8080:8080 ${cheServerImage}
-            \\\`\\\`\\\`
-            
-            </details>
-            \`;
+            `;
             github.rest.issues.createComment({ issue_number, owner, repo, body: text });
-
