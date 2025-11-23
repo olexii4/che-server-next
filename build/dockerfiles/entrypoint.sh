@@ -15,8 +15,8 @@ set -e
 echo 'Starting Che Server...'
 
 # Set default values
-export PORT=${PORT:-8080}
-export HOST=${HOST:-0.0.0.0}
+export PORT=${CHE_PORT:-8080}
+export HOST=${CHE_HOST:-0.0.0.0}
 export NODE_ENV=${NODE_ENV:-production}
 export CHE_HOME=${CHE_HOME:-/home/user/che-server}
 
