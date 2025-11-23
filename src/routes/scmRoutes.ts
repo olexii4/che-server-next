@@ -102,15 +102,6 @@ The response includes Content-Disposition header to trigger file download in bro
                 description: 'attachment; filename="<filename>"',
               },
             },
-            example: `schemaVersion: 2.1.0
-metadata:
-  name: che-dashboard
-  description: Eclipse Che Dashboard
-projects:
-  - name: che-dashboard
-    git:
-      remotes:
-        origin: https://github.com/eclipse-che/che-dashboard.git`,
           },
           400: {
             description: 'Bad Request - Missing or invalid parameters',
@@ -133,16 +124,6 @@ projects:
                   oauth_version: { type: 'string' },
                   oauth_authentication_url: { type: 'string' },
                 },
-              },
-            },
-            example: {
-              errorCode: 401,
-              message: 'SCM Authentication required',
-              attributes: {
-                oauth_provider: 'bitbucket',
-                oauth_version: '2.0',
-                oauth_authentication_url:
-                  'http://localhost:8080/api/oauth/authenticate?oauth_provider=bitbucket&scope=repository&request_method=POST&signature_method=rsa',
               },
             },
           },

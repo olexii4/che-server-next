@@ -48,10 +48,6 @@ export async function registerDataResolverRoutes(fastify: FastifyInstance) {
           200: {
             description: 'Data fetched successfully',
             type: 'string',
-            example: `schemaVersion: 2.1.0
-metadata:
-  name: che-dashboard
-  description: Eclipse Che Dashboard`,
           },
           400: {
             description: 'Bad Request',
@@ -59,10 +55,6 @@ metadata:
             properties: {
               error: { type: 'string' },
               message: { type: 'string' },
-            },
-            example: {
-              error: 'Bad Request',
-              message: 'URL parameter is required',
             },
           },
           404: {

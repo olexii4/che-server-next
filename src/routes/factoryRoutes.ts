@@ -66,47 +66,6 @@ export async function registerFactoryRoutes(fastify: FastifyInstance): Promise<v
             description: 'Factory resolved successfully',
             type: 'object',
             additionalProperties: true,
-            example: {
-              v: '4.0',
-              source: 'devfile.yaml',
-              devfile: {
-                schemaVersion: '2.1.0',
-                metadata: {
-                  name: 'che-dashboard',
-                },
-              },
-              scm_info: {
-                clone_url: 'https://github.com/eclipse-che/che-dashboard.git',
-                scm_provider: 'github',
-              },
-              links: [
-                {
-                  href: 'http://localhost:8080/api/scm/resolve?repository=https://github.com/eclipse-che/che-dashboard.git&file=devfile.yaml',
-                  method: 'GET',
-                  rel: 'self',
-                },
-                {
-                  href: 'http://localhost:8080/api/scm/resolve?repository=https://github.com/eclipse-che/che-dashboard.git&file=devfile.yaml',
-                  method: 'GET',
-                  rel: 'devfile.yaml content',
-                },
-                {
-                  href: 'http://localhost:8080/api/scm/resolve?repository=https://github.com/eclipse-che/che-dashboard.git&file=.che/che-editor.yaml',
-                  method: 'GET',
-                  rel: '.che/che-editor.yaml content',
-                },
-                {
-                  href: 'http://localhost:8080/api/scm/resolve?repository=https://github.com/eclipse-che/che-dashboard.git&file=.che/che-theia-plugins.yaml',
-                  method: 'GET',
-                  rel: '.che/che-theia-plugins.yaml content',
-                },
-                {
-                  href: 'http://localhost:8080/api/scm/resolve?repository=https://github.com/eclipse-che/che-dashboard.git&file=.vscode/extensions.json',
-                  method: 'GET',
-                  rel: '.vscode/extensions.json content',
-                },
-              ],
-            },
           },
           400: {
             description: 'Bad Request',
@@ -129,16 +88,6 @@ export async function registerFactoryRoutes(fastify: FastifyInstance): Promise<v
                   oauth_version: { type: 'string' },
                   oauth_authentication_url: { type: 'string' },
                 },
-              },
-            },
-            example: {
-              errorCode: 401,
-              message: 'SCM Authentication required',
-              attributes: {
-                oauth_provider: 'github',
-                oauth_version: '2.0',
-                oauth_authentication_url:
-                  'http://localhost:8080/api/oauth/authenticate?oauth_provider=github&scope=repo&request_method=POST&signature_method=rsa',
               },
             },
           },

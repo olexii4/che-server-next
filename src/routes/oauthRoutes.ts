@@ -69,38 +69,6 @@ export async function registerOAuthRoutes(fastify: FastifyInstance): Promise<voi
                 },
               },
             },
-            example: [
-              {
-                name: 'github',
-                endpointUrl: 'https://github.com/login/oauth/authorize',
-                links: [
-                  {
-                    rel: 'authenticate',
-                    href: 'http://localhost:8080/api/oauth/authenticate?oauth_provider=github',
-                  },
-                ],
-              },
-              {
-                name: 'gitlab',
-                endpointUrl: 'https://gitlab.com/oauth/authorize',
-                links: [
-                  {
-                    rel: 'authenticate',
-                    href: 'http://localhost:8080/api/oauth/authenticate?oauth_provider=gitlab',
-                  },
-                ],
-              },
-              {
-                name: 'bitbucket',
-                endpointUrl: 'https://bitbucket.org/site/oauth2/authorize',
-                links: [
-                  {
-                    rel: 'authenticate',
-                    href: 'http://localhost:8080/api/oauth/authenticate?oauth_provider=bitbucket',
-                  },
-                ],
-              },
-            ],
           },
           401: {
             description: 'Unauthorized',
@@ -167,10 +135,6 @@ export async function registerOAuthRoutes(fastify: FastifyInstance): Promise<voi
             properties: {
               token: { type: 'string' },
               scope: { type: 'string' },
-            },
-            example: {
-              token: 'ghp_1234567890abcdefghijklmnopqrstuvwxyz',
-              scope: 'repo,user',
             },
           },
           400: {

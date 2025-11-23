@@ -54,21 +54,6 @@ export async function registerNamespaceRoutes(fastify: FastifyInstance): Promise
                 },
               },
             },
-            example: [
-              {
-                name: 'user-che',
-                attributes: {
-                  phase: 'Active',
-                  default: 'true',
-                },
-              },
-              {
-                name: 'user-workspace-1',
-                attributes: {
-                  phase: 'Active',
-                },
-              },
-            ],
           },
           401: {
             description: 'Unauthorized',
@@ -147,14 +132,6 @@ export async function registerNamespaceRoutes(fastify: FastifyInstance): Promise
               attributes: {
                 type: 'object',
                 additionalProperties: { type: 'string' },
-              },
-            },
-            example: {
-              name: 'user-che',
-              attributes: {
-                phase: 'Active',
-                default: 'true',
-                creationTimestamp: '2025-11-20T14:00:00Z',
               },
             },
           },
