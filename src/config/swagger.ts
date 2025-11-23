@@ -116,6 +116,8 @@ export async function setupSwagger(fastify: FastifyInstance): Promise<void> {
       deepLinking: true,
       displayRequestDuration: true,
       filter: true,
+      defaultModelsExpandDepth: -1, // Hide example values, show only schemas
+      defaultModelExpandDepth: 0, // Don't expand model details by default
       syntaxHighlight: {
         activate: true,
         theme: 'monokai',
