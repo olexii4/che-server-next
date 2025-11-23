@@ -189,37 +189,6 @@ async function start() {
       { prefix: '/api' },
     );
 
-    // ALSO register the same routes with /dashboard/api prefix
-    // This makes our server compatible with Eclipse Che Dashboard's expected API paths
-    await fastify.register(
-      async dashboardApiInstance => {
-        await registerNamespaceRoutes(dashboardApiInstance);
-        await registerFactoryRoutes(dashboardApiInstance);
-        await registerOAuthRoutes(dashboardApiInstance);
-        await registerScmRoutes(dashboardApiInstance);
-        await registerDataResolverRoutes(dashboardApiInstance);
-        await registerClusterInfoRoutes(dashboardApiInstance);
-        await registerClusterConfigRoutes(dashboardApiInstance);
-        await registerServerConfigRoutes(dashboardApiInstance);
-        await registerDevWorkspaceRoutes(dashboardApiInstance);
-        await registerDevWorkspaceTemplateRoutes(dashboardApiInstance);
-        await registerDevWorkspaceResourcesRoutes(dashboardApiInstance);
-        await registerDevWorkspaceClusterRoutes(dashboardApiInstance);
-        await registerPodsRoutes(dashboardApiInstance);
-        await registerEventsRoutes(dashboardApiInstance);
-        await registerEditorsRoutes(dashboardApiInstance);
-        await registerUserProfileRoutes(dashboardApiInstance);
-        await registerSshKeysRoutes(dashboardApiInstance);
-        await registerPersonalAccessTokenRoutes(dashboardApiInstance);
-        await registerGitConfigRoutes(dashboardApiInstance);
-        await registerDockerConfigRoutes(dashboardApiInstance);
-        await registerWorkspacePreferencesRoutes(dashboardApiInstance);
-        await registerGettingStartedSampleRoutes(dashboardApiInstance);
-        await registerSystemRoutes(dashboardApiInstance);
-      },
-      { prefix: '/dashboard/api' },
-    );
-
     // Health check endpoints for Kubernetes
     fastify.get('/healthz', async (request, reply) => {
       return reply.code(200).send({ status: 'ok' });
@@ -358,32 +327,6 @@ async function start() {
             path: '/',
             regex: '(/.*)?',
             fqn: 'index.ts (API Info)',
-          },
-        ],
-      });
-    });
-
-    // Dashboard API root endpoint
-    // NOTE: OPTIONS requests are handled automatically by @fastify/cors plugin
-    
-    fastify.get('/dashboard/api', async (request, reply) => {
-      // Return same info as /api
-      return reply.code(200).send({
-        rootResources: [
-          {
-            path: '/kubernetes/namespace',
-            regex: '/kubernetes/namespace(/.*)?',
-            fqn: 'namespaceRoutes.ts',
-          },
-          {
-            path: '/oauth',
-            regex: '/oauth(/.*)?',
-            fqn: 'oauthRoutes.ts',
-          },
-          {
-            path: '/factory',
-            regex: '/factory(/.*)?',
-            fqn: 'factoryRoutes.ts',
           },
         ],
       });

@@ -19,7 +19,7 @@ import { ServerConfig } from '../models/ClusterModels';
  *
  * Provides server-wide configuration including editor defaults, timeouts,
  * plugin registry URLs, and devfile registry settings.
- * Matches dashboard-backend route: GET /dashboard/api/server-config
+ * Route: GET /api/server-config
  */
 export async function registerServerConfigRoutes(fastify: FastifyInstance): Promise<void> {
   /**

@@ -18,7 +18,7 @@ import { ApplicationId, ApplicationInfo, ClusterInfo } from '../models/ClusterMo
  * Register cluster info routes
  *
  * Provides information about external applications and tools available in the cluster.
- * Matches dashboard-backend route: GET /dashboard/api/cluster-info
+ * Route: GET /api/cluster-info
  */
 export async function registerClusterInfoRoutes(fastify: FastifyInstance): Promise<void> {
   /**

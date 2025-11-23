@@ -18,7 +18,7 @@ import { ClusterConfig } from '../models/ClusterModels';
  * Register cluster config routes
  *
  * Provides cluster-specific configuration like workspace limits, warnings, and architecture.
- * Matches dashboard-backend route: GET /dashboard/api/cluster-config
+ * Route: GET /api/cluster-config
  */
 export async function registerClusterConfigRoutes(fastify: FastifyInstance): Promise<void> {
   /**
