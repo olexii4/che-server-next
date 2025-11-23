@@ -15,8 +15,12 @@ set -e
 echo 'Starting Che Server...'
 
 # Set default values
-export PORT=${CHE_PORT:-8080}
-export HOST=${CHE_HOST:-0.0.0.0}
+# Use CHE_PORT if available (set by Che Operator), otherwise default to 8080
+export PORT=${CHE_PORT:-${PORT:-8080}}
+# Note: CHE_HOST is the EXTERNAL hostname (e.g., eclipse-che.apps.xxx.com)
+# For binding, we always use 0.0.0.0 to listen on all interfaces
+# Use CHE_BIND_ADDRESS to override if needed
+export BIND_ADDRESS=${CHE_BIND_ADDRESS:-0.0.0.0}
 export NODE_ENV=${NODE_ENV:-production}
 export CHE_HOME=${CHE_HOME:-/home/user/che-server}
 
@@ -27,9 +31,13 @@ elif [ -n "${CHE_NAMESPACE_TEMPLATE}" ]; then
   export NAMESPACE_TEMPLATE=${CHE_NAMESPACE_TEMPLATE}
 fi
 
-# Set API endpoint if provided
+# Set API endpoint for OAuth callbacks and factory resolver
+# Priority: CHE_API > CHE_API_ENDPOINT > constructed from CHE_HOST
 if [ -n "${CHE_API}" ]; then
   export CHE_API_ENDPOINT=${CHE_API}
+elif [ -z "${CHE_API_ENDPOINT}" ] && [ -n "${CHE_HOST}" ]; then
+  # Construct API endpoint from CHE_HOST if not explicitly set
+  export CHE_API_ENDPOINT="https://${CHE_HOST}/api"
 fi
 
 # Set factory default devfile filenames if provided
@@ -64,6 +72,12 @@ fi
 cd "${CHE_HOME}"
 
 # Start the server
-echo "Starting server on ${HOST}:${PORT} in ${NODE_ENV} mode"
+echo "Starting server on ${BIND_ADDRESS}:${PORT} in ${NODE_ENV} mode"
+if [ -n "${CHE_HOST}" ]; then
+  echo "External hostname: ${CHE_HOST}"
+fi
+if [ -n "${CHE_API}" ]; then
+  echo "API endpoint: ${CHE_API}"
+fi
 exec node --no-deprecation dist/index.js
 
