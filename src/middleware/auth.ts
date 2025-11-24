@@ -17,8 +17,10 @@
  * 1. Bearer token (real Kubernetes/OpenShift token): Authorization: Bearer sha256~...
  * 2. Bearer token (test format): Authorization: Bearer <userid>:<username>
  * 3. Basic auth: Authorization: Basic <base64(username:userid)>
+ * 4. gap-auth header (from Eclipse Che Gateway)
  */
 import { FastifyRequest, FastifyReply, HookHandlerDoneFunction } from 'fastify';
+import * as k8s from '@kubernetes/client-node';
 import { logger } from '../utils/logger';
 import { getServiceAccountToken } from '../helpers/getServiceAccountToken';
 
@@ -70,6 +72,60 @@ function decodeJwtPayload(token: string): any {
 }
 
 /**
+ * Extract username from Kubernetes token using TokenReview API
+ */
+async function getUsernameFromK8sToken(token: string): Promise<string | null> {
+  try {
+    const kc = new k8s.KubeConfig();
+    kc.loadFromDefault();
+    
+    const authApi = kc.makeApiClient(k8s.AuthenticationV1Api);
+    
+    // Create TokenReview request
+    const tokenReview: k8s.V1TokenReview = {
+      apiVersion: 'authentication.k8s.io/v1',
+      kind: 'TokenReview',
+      spec: {
+        token: token,
+      },
+    };
+    
+    const response = await authApi.createTokenReview(tokenReview);
+    
+    // Check if token is authenticated
+    if (response.body.status?.authenticated) {
+      const username = response.body.status.user?.username;
+      if (username) {
+        logger.info(`✅ Extracted username from K8s token: ${username}`);
+        
+        // Clean up username for namespace usage
+        // Remove system: prefix and kube: prefix if present
+        let cleanUsername = username;
+        if (cleanUsername.startsWith('system:serviceaccount:')) {
+          // Extract service account name: system:serviceaccount:namespace:name -> name
+          const parts = cleanUsername.split(':');
+          cleanUsername = parts[parts.length - 1];
+        } else if (cleanUsername.startsWith('kube:')) {
+          cleanUsername = cleanUsername.replace(/^kube:/, '');
+        } else if (cleanUsername.includes(':')) {
+          // For other system accounts, take the last part
+          const parts = cleanUsername.split(':');
+          cleanUsername = parts[parts.length - 1];
+        }
+        
+        return cleanUsername;
+      }
+    }
+    
+    logger.warn('Token is not authenticated or has no username');
+    return null;
+  } catch (error: any) {
+    logger.error({ error }, 'Failed to validate token with TokenReview API');
+    return null;
+  }
+}
+
+/**
  * Parse Bearer token format: Bearer <token>
  *
  * Supports three formats:
@@ -77,7 +133,7 @@ function decodeJwtPayload(token: string): any {
  * 2. Real Kubernetes/OpenShift tokens (e.g., sha256~...)
  * 3. Test format: userid:username
  */
-function parseBearerToken(token: string): Subject | null {
+async function parseBearerToken(token: string): Promise<Subject | null> {
   // Check if it's the test format (userid:username)
   const parts = token.split(':');
   if (parts.length === 2) {
@@ -126,11 +182,23 @@ function parseBearerToken(token: string): Subject | null {
   }
 
   // Real Kubernetes/OpenShift token (no colons, not a JWT)
-  // Use as-is for Kubernetes API calls
-  // Note: Cannot determine username from raw K8s token without API call
-  // When accessed through Che Gateway, gap-auth header will provide username
-  // For direct API access, will default to 'che-user'
-  logger.info(`✅ Kubernetes token (sha256~...): defaulting to che-user (use gap-auth header for correct username)`);
+  // Use TokenReview API to get the username
+  logger.info(`🔍 Kubernetes token detected (sha256~...), querying TokenReview API for username`);
+  
+  const username = await getUsernameFromK8sToken(token);
+  
+  if (username) {
+    logger.info(`✅ Kubernetes token authenticated as: ${username}`);
+    return {
+      id: username,
+      userId: username,
+      userName: username,
+      token: token,
+    };
+  }
+  
+  // Fallback if TokenReview fails
+  logger.warn(`⚠️ Could not determine username from K8s token, using 'che-user' as fallback`);
   return {
     id: 'che-user',
     userId: 'che-user',
@@ -207,7 +275,7 @@ export async function authenticate(request: FastifyRequest, reply: FastifyReply)
 
   if (authHeader.startsWith('Bearer ')) {
     const token = authHeader.substring(7);
-    const subject = parseBearerToken(token);
+    const subject = await parseBearerToken(token);
     if (subject) {
       logger.info(
         `✅ Bearer token authenticated as: userId="${subject.userId}", userName="${subject.userName}"`,
