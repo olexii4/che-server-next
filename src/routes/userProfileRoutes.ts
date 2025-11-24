@@ -178,17 +178,32 @@ export async function registerUserProfileRoutes(fastify: FastifyInstance): Promi
         }
 
         const { namespace } = request.params;
-        const kubeConfig = getKubeConfig(request.subject.token);
+
+        // Use service account token to read the user-profile secret
+        // (consistent with /api/user/id and namespace operations)
+        const serviceAccountToken = getServiceAccountToken();
+        if (!serviceAccountToken) {
+          return reply.code(500).send({
+            statusCode: 500,
+            error: 'Internal Server Error',
+            message: 'Service account token not available',
+          });
+        }
+
+        const kubeConfig = getKubeConfig(serviceAccountToken);
         const service = new UserProfileService(kubeConfig);
 
         // getUserProfile now always returns a profile (default if Secret doesn't exist)
         const profile = await service.getUserProfile(namespace);
+        
+        fastify.log.info({ namespace, username: profile.username }, 'Retrieved user profile');
+        
         return reply.code(200).send(profile);
       } catch (error: any) {
         // Only handle non-404 errors now (403, 500, etc.)
         const statusCode = error.statusCode || error.response?.statusCode || 500;
 
-        fastify.log.error({ error }, 'Error getting user profile');
+        fastify.log.error({ error, namespace: request.params.namespace }, 'Error getting user profile');
         return reply.code(statusCode).send({
           statusCode: statusCode,
           error: statusCode === 403 ? 'Forbidden' : 'Internal Server Error',
