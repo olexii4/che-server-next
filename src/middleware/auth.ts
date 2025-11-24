@@ -78,7 +78,7 @@ function decodeJwtPayload(token: string): any {
 async function getUsernameFromK8sToken(token: string): Promise<string | null> {
   try {
     // Add timeout to prevent hanging
-    const timeoutPromise = new Promise<null>((resolve) => {
+    const timeoutPromise = new Promise<null>(resolve => {
       setTimeout(() => {
         logger.warn('TokenReview API call timed out after 3 seconds');
         resolve(null);
@@ -88,9 +88,9 @@ async function getUsernameFromK8sToken(token: string): Promise<string | null> {
     const tokenReviewPromise = (async () => {
       const kc = new k8s.KubeConfig();
       kc.loadFromDefault();
-      
+
       const authApi = kc.makeApiClient(k8s.AuthenticationV1Api);
-      
+
       // Create TokenReview request
       const tokenReview: k8s.V1TokenReview = {
         apiVersion: 'authentication.k8s.io/v1',
@@ -99,15 +99,15 @@ async function getUsernameFromK8sToken(token: string): Promise<string | null> {
           token: token,
         },
       };
-      
+
       const response = await authApi.createTokenReview(tokenReview);
-      
+
       // Check if token is authenticated
       if (response.body.status?.authenticated) {
         const username = response.body.status.user?.username;
         if (username) {
           logger.info(`✅ Extracted username from K8s token: ${username}`);
-          
+
           // Clean up username for namespace usage
           // Remove system: prefix and kube: prefix if present
           let cleanUsername = username;
@@ -122,11 +122,11 @@ async function getUsernameFromK8sToken(token: string): Promise<string | null> {
             const parts = cleanUsername.split(':');
             cleanUsername = parts[parts.length - 1];
           }
-          
+
           return cleanUsername;
         }
       }
-      
+
       logger.warn('Token is not authenticated or has no username');
       return null;
     })();
@@ -199,9 +199,9 @@ async function parseBearerToken(token: string): Promise<Subject | null> {
   // Real Kubernetes/OpenShift token (no colons, not a JWT)
   // Use TokenReview API to get the username
   logger.info(`🔍 Kubernetes token detected (not JWT), querying TokenReview API for username`);
-  
+
   const username = await getUsernameFromK8sToken(token);
-  
+
   if (username) {
     logger.info(`✅ Kubernetes token authenticated as: ${username}`);
     return {
@@ -211,7 +211,7 @@ async function parseBearerToken(token: string): Promise<Subject | null> {
       token: token,
     };
   }
-  
+
   // Fallback if TokenReview fails or is not available
   logger.warn(`⚠️ TokenReview unavailable or failed, using 'che-user' as fallback`);
   return {

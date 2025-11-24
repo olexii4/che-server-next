@@ -52,7 +52,7 @@ describe('OAuth Routes (Fastify)', () => {
       expect(response.statusCode).toBe(200);
       const body = JSON.parse(response.body);
       expect(Array.isArray(body)).toBe(true);
-      
+
       // Without Kubernetes Secrets configured, the service returns []
       // This is expected behavior matching Eclipse Che Server
       // In production with Secrets configured, this will return providers
@@ -68,7 +68,7 @@ describe('OAuth Routes (Fastify)', () => {
       });
 
       const body = JSON.parse(response.body);
-      
+
       // If providers are configured (via Kubernetes Secrets), validate structure
       if (body.length > 0) {
         const authenticator = body[0];
