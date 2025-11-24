@@ -230,6 +230,7 @@ async function start() {
     // Start the server
     await fastify.listen({ port: PORT, host: HOST });
 
+    logger.info(`Che Server swagger is running on "http://localhost:${PORT}/swagger".`);
     logger.info(`\n🚀 Eclipse Che Next API Server (Fastify) is running on port ${PORT}`);
     logger.info(`\n📚 API Documentation:`);
     logger.info(`   Swagger UI: http://localhost:${PORT}/swagger`);

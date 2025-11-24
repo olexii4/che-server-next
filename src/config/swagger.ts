@@ -36,8 +36,6 @@ type MySchema = {
  * Register Swagger plugins with Fastify in dynamic mode
  */
 export async function setupSwagger(fastify: FastifyInstance): Promise<void> {
-  logger.info(`Che Server swagger is running on "${ROUTE_PREFIX}".`);
-
   // Dynamically determine server URL from environment or use defaults
   const getServerUrl = (): string => {
     // Priority:
