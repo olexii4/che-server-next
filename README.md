@@ -63,11 +63,13 @@ This TypeScript project is based on:
 
 ### OAuth Authentication
 
-- ✅ GET `/oauth` - Get registered OAuth authenticators
+- ✅ GET `/oauth` - Get registered OAuth authenticators (returns `[]` without configuration)
 - ✅ GET `/oauth/token` - Get OAuth token for provider
 - ✅ DELETE `/oauth/token` - Invalidate OAuth token
 
-**📖 See [docs/OAUTH_IMPLEMENTATION.md](docs/OAUTH_IMPLEMENTATION.md) for detailed OAuth implementation guide comparing Java vs TypeScript, including OAuth 2.0 flow diagrams and Kubernetes Secret configuration.**
+**📖 Configuration:** [docs/OAUTH_CONFIGURATION.md](docs/OAUTH_CONFIGURATION.md) - How to configure OAuth providers via Kubernetes Secrets (returns `[]` if no secrets configured)
+
+**📖 Implementation:** [docs/OAUTH_IMPLEMENTATION.md](docs/OAUTH_IMPLEMENTATION.md) - OAuth implementation guide comparing Java vs TypeScript, including OAuth 2.0 flow diagrams
 
 ### 6. SCM Integration
 
@@ -237,11 +239,17 @@ Authorization: Basic <base64(username:userid)>
 
 **Endpoint**: `GET /api/oauth`
 
-**Description**: Get list of registered OAuth providers (GitHub, GitLab, Bitbucket).
+**Description**: Get list of registered OAuth providers. Returns `[]` if no Kubernetes Secrets are configured. Providers are loaded from Secrets with label `app.kubernetes.io/component=oauth-scm-configuration`.
 
 **Authentication**: Required
 
-**Response** (200 OK):
+**Response without configuration** (200 OK):
+
+```json
+[]
+```
+
+**Response with GitHub configured** (200 OK):
 
 ```json
 [
@@ -257,6 +265,8 @@ Authorization: Basic <base64(username:userid)>
   }
 ]
 ```
+
+**See:** [docs/OAUTH_CONFIGURATION.md](docs/OAUTH_CONFIGURATION.md) for configuration guide
 
 ### 5. Get OAuth Token
 
