@@ -17,45 +17,240 @@ import {
   OAUTH_CONSTANTS,
 } from '../models/OAuthModels';
 import { logger } from '../utils/logger';
+import * as k8s from '@kubernetes/client-node';
 
 /**
  * OAuth Service - Manages OAuth authentication and token operations
  *
  * Based on: org.eclipse.che.security.oauth.OAuthAPI
+ *
+ * Configuration:
+ * - In production: Loads OAuth providers from Kubernetes Secrets
+ * - Without secrets: Returns empty array [] (no default providers)
+ *
+ * See: https://eclipse.dev/che/docs/stable/administration-guide/configuring-oauth-2-for-github/
  */
 export class OAuthService {
   private tokens: Map<string, Map<string, OAuthToken>> = new Map(); // userId -> provider -> token
   private providers: Map<string, OAuthProviderConfig> = new Map();
+  private k8sApi?: k8s.CoreV1Api;
+  private namespace: string;
+  private isInitialized = false;
 
   constructor() {
-    // Register default OAuth providers
-    this.registerProvider({
-      name: OAUTH_CONSTANTS.PROVIDERS.GITHUB,
-      authorizationEndpoint: 'https://github.com/login/oauth/authorize',
-      tokenEndpoint: 'https://github.com/login/oauth/access_token',
-      scopes: ['repo', 'user', 'write:public_key'],
-    });
+    // Start with empty providers - will be loaded from Kubernetes Secrets
+    this.namespace = process.env.CHE_NAMESPACE || 'eclipse-che';
 
-    this.registerProvider({
-      name: OAUTH_CONSTANTS.PROVIDERS.GITLAB,
-      authorizationEndpoint: 'https://gitlab.com/oauth/authorize',
-      tokenEndpoint: 'https://gitlab.com/oauth/token',
-      scopes: ['api', 'read_user', 'read_repository'],
-    });
+    // Initialize Kubernetes API client if in cluster
+    try {
+      const kc = new k8s.KubeConfig();
+      kc.loadFromDefault();
+      this.k8sApi = kc.makeApiClient(k8s.CoreV1Api);
+      logger.info('OAuth Service: Kubernetes API client initialized');
+    } catch (error) {
+      logger.warn('OAuth Service: Not running in Kubernetes cluster, no providers will be loaded');
+    }
+  }
 
-    this.registerProvider({
-      name: OAUTH_CONSTANTS.PROVIDERS.BITBUCKET,
-      authorizationEndpoint: 'https://bitbucket.org/site/oauth2/authorize',
-      tokenEndpoint: 'https://bitbucket.org/site/oauth2/access_token',
-      scopes: ['repository', 'account'],
-    });
+  /**
+   * Initialize OAuth service - load providers from Kubernetes Secrets
+   *
+   * Must be called before using the service in production environments.
+   * Without Kubernetes Secrets, the service will return empty array [] for providers.
+   */
+  async initialize(): Promise<void> {
+    if (this.isInitialized) {
+      return;
+    }
 
-    this.registerProvider({
-      name: OAUTH_CONSTANTS.PROVIDERS.AZURE_DEVOPS,
-      authorizationEndpoint: 'https://app.vssps.visualstudio.com/oauth2/authorize',
-      tokenEndpoint: 'https://app.vssps.visualstudio.com/oauth2/token',
-      scopes: ['vso.code', 'vso.code_write'],
-    });
+    await this.loadProvidersFromSecrets();
+    this.isInitialized = true;
+  }
+
+  /**
+   * Load OAuth providers from Kubernetes Secrets
+   *
+   * Reads secrets with label: app.kubernetes.io/component=oauth-scm-configuration
+   *
+   * Expected Secret structure:
+   * ```yaml
+   * apiVersion: v1
+   * kind: Secret
+   * metadata:
+   *   name: github-oauth-config
+   *   labels:
+   *     app.kubernetes.io/part-of: che.eclipse.org
+   *     app.kubernetes.io/component: oauth-scm-configuration
+   *   annotations:
+   *     che.eclipse.org/oauth-scm-server: github
+   *     che.eclipse.org/scm-server-endpoint: https://github.com
+   * type: Opaque
+   * data:
+   *   id: <base64-client-id>
+   *   secret: <base64-client-secret>
+   * ```
+   */
+  private async loadProvidersFromSecrets(): Promise<void> {
+    if (!this.k8sApi) {
+      logger.info('OAuth Service: Kubernetes API not available, no providers loaded');
+      return;
+    }
+
+    try {
+      logger.info(
+        `OAuth Service: Loading providers from Kubernetes Secrets in namespace: ${this.namespace}`,
+      );
+
+      // List secrets with OAuth configuration label
+      const response = await this.k8sApi.listNamespacedSecret(
+        this.namespace,
+        undefined, // pretty
+        undefined, // allowWatchBookmarks
+        undefined, // _continue
+        undefined, // fieldSelector
+        'app.kubernetes.io/component=oauth-scm-configuration', // labelSelector
+      );
+
+      if (!response.body.items || response.body.items.length === 0) {
+        logger.info(
+          'OAuth Service: No OAuth configuration secrets found. /api/oauth will return []',
+        );
+        return;
+      }
+
+      logger.info(
+        `OAuth Service: Found ${response.body.items.length} OAuth configuration secret(s)`,
+      );
+
+      for (const secret of response.body.items) {
+        try {
+          await this.processOAuthSecret(secret);
+        } catch (error: any) {
+          logger.error(
+            `OAuth Service: Failed to process secret ${secret.metadata?.name}: ${error.message}`,
+          );
+          // Continue processing other secrets
+        }
+      }
+
+      logger.info(`OAuth Service: Successfully loaded ${this.providers.size} OAuth provider(s)`);
+    } catch (error: any) {
+      logger.error({ error }, 'OAuth Service: Failed to load OAuth providers from Kubernetes');
+      // Continue with empty providers - API will return empty array
+    }
+  }
+
+  /**
+   * Process a single OAuth configuration secret
+   */
+  private async processOAuthSecret(secret: k8s.V1Secret): Promise<void> {
+    const annotations = secret.metadata?.annotations || {};
+    const data = secret.data || {};
+    const secretName = secret.metadata?.name || 'unknown';
+
+    // Extract provider configuration from annotations
+    const providerName = annotations['che.eclipse.org/oauth-scm-server'];
+    const serverEndpoint = annotations['che.eclipse.org/scm-server-endpoint'];
+
+    // Validate required fields
+    if (!providerName) {
+      logger.warn(
+        `OAuth Service: Secret ${secretName} missing annotation: che.eclipse.org/oauth-scm-server`,
+      );
+      return;
+    }
+
+    if (!data.id || !data.secret) {
+      logger.warn(
+        `OAuth Service: Secret ${secretName} missing required data fields: id and secret`,
+      );
+      return;
+    }
+
+    // Decode base64 credentials
+    const clientId = Buffer.from(data.id, 'base64').toString('utf-8');
+    const clientSecret = Buffer.from(data.secret, 'base64').toString('utf-8');
+
+    if (!clientId || !clientSecret) {
+      logger.warn(`OAuth Service: Secret ${secretName} has empty credentials`);
+      return;
+    }
+
+    // Build provider configuration based on provider type
+    const config = this.buildProviderConfig(providerName, serverEndpoint, clientId, clientSecret);
+
+    if (config) {
+      this.providers.set(providerName, config);
+      logger.info(
+        `OAuth Service: Loaded provider '${providerName}' from secret '${secretName}' (endpoint: ${serverEndpoint || 'default'})`,
+      );
+    }
+  }
+
+  /**
+   * Build provider configuration based on provider type
+   */
+  private buildProviderConfig(
+    providerName: string,
+    serverEndpoint: string | undefined,
+    clientId: string,
+    clientSecret: string,
+  ): OAuthProviderConfig | null {
+    const lowerProvider = providerName.toLowerCase();
+
+    // GitHub
+    if (lowerProvider === 'github') {
+      const baseUrl = serverEndpoint || 'https://github.com';
+      return {
+        name: lowerProvider,
+        authorizationEndpoint: `${baseUrl}/login/oauth/authorize`,
+        tokenEndpoint: `${baseUrl}/login/oauth/access_token`,
+        scopes: ['repo', 'user', 'write:public_key'],
+        clientId,
+        clientSecret,
+      };
+    }
+
+    // GitLab
+    if (lowerProvider === 'gitlab') {
+      const baseUrl = serverEndpoint || 'https://gitlab.com';
+      return {
+        name: lowerProvider,
+        authorizationEndpoint: `${baseUrl}/oauth/authorize`,
+        tokenEndpoint: `${baseUrl}/oauth/token`,
+        scopes: ['api', 'read_user', 'read_repository'],
+        clientId,
+        clientSecret,
+      };
+    }
+
+    // Bitbucket
+    if (lowerProvider === 'bitbucket') {
+      const baseUrl = serverEndpoint || 'https://bitbucket.org';
+      return {
+        name: lowerProvider,
+        authorizationEndpoint: `${baseUrl}/site/oauth2/authorize`,
+        tokenEndpoint: `${baseUrl}/site/oauth2/access_token`,
+        scopes: ['repository', 'account'],
+        clientId,
+        clientSecret,
+      };
+    }
+
+    // Azure DevOps
+    if (lowerProvider === 'azure-devops' || lowerProvider === 'azure_devops') {
+      return {
+        name: 'azure-devops',
+        authorizationEndpoint: 'https://app.vssps.visualstudio.com/oauth2/authorize',
+        tokenEndpoint: 'https://app.vssps.visualstudio.com/oauth2/token',
+        scopes: ['vso.code', 'vso.code_write'],
+        clientId,
+        clientSecret,
+      };
+    }
+
+    logger.warn(`OAuth Service: Unknown provider type: ${providerName}`);
+    return null;
   }
 
   /**

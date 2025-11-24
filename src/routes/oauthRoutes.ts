@@ -17,10 +17,16 @@ import { OAuthService } from '../services/OAuthService';
  * Register OAuth routes
  *
  * Based on: org.eclipse.che.security.oauth.OAuthAuthenticationService
+ *
+ * OAuth Configuration:
+ * - Loads providers from Kubernetes Secrets
+ * - Returns [] if no secrets configured
+ * - See: https://eclipse.dev/che/docs/stable/administration-guide/configuring-oauth-2-for-github/
  */
 export async function registerOAuthRoutes(fastify: FastifyInstance): Promise<void> {
-  // Initialize service
+  // Initialize service and load providers from Kubernetes Secrets
   const oauthService = new OAuthService();
+  await oauthService.initialize();
 
   /**
    * GET /oauth
