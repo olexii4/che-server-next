@@ -193,4 +193,68 @@ export class KubernetesNamespaceFactory {
       return [];
     }
   }
+
+  /**
+   * List namespaces for a specific user.
+   * Uses the user's token to list only namespaces they have access to.
+   *
+   * @param userId - User ID to filter namespaces
+   * @returns Promise resolving to array of user's namespace metadata
+   */
+  async listForUser(userId: string): Promise<KubernetesNamespaceMeta[]> {
+    try {
+      // List all namespaces the user has access to (using their token)
+      // The user token will automatically limit visibility to namespaces they can see
+      const response = await this.k8sApi.listNamespace(
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        'app.kubernetes.io/part-of=che.eclipse.org',
+      );
+
+      // Filter namespaces by user ID annotation
+      const userNamespaces = response.body.items.filter(ns => {
+        const nsUserId = ns.metadata?.annotations?.['che.eclipse.org/user-id'];
+        return nsUserId === userId;
+      });
+
+      return userNamespaces.map(ns => {
+        const attributes: Record<string, string> = {};
+
+        if (ns.status?.phase) {
+          attributes[NAMESPACE_ATTRIBUTES.PHASE] = ns.status.phase;
+        }
+
+        // Add description and displayName if available
+        const description = ns.metadata?.annotations?.['che.eclipse.org/description'] || '';
+        const displayName = ns.metadata?.annotations?.['che.eclipse.org/display-name'] || '';
+
+        if (description) {
+          attributes['description'] = description;
+        }
+        if (displayName) {
+          attributes['displayName'] = displayName;
+        }
+
+        attributes[NAMESPACE_ATTRIBUTES.PHASE] = ns.status?.phase || 'Active';
+
+        return {
+          name: ns.metadata?.name || '',
+          attributes,
+        };
+      });
+    } catch (error: any) {
+      logger.error({ error }, `Error listing namespaces for user ${userId}`);
+
+      // If it's a permission error (403), return empty array (user has no access)
+      if (error.statusCode === 403 || error.response?.statusCode === 403) {
+        logger.info(`User ${userId} has no permission to list namespaces, returning empty array`);
+        return [];
+      }
+
+      // For other errors, return empty array
+      return [];
+    }
+  }
 }

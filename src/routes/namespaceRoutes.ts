@@ -31,18 +31,21 @@ export async function registerNamespaceRoutes(fastify: FastifyInstance): Promise
    *
    * Get k8s namespaces where user is able to create workspaces.
    * This operation can be performed only by authorized user.
+   *
+   * Uses the user's token to list only their namespaces.
    */
   fastify.get(
     '/kubernetes/namespace',
     {
       schema: {
         tags: ['kubernetes-namespace'],
-        summary: 'List Kubernetes namespaces',
-        description: 'Get k8s namespaces where user is able to create workspaces',
+        summary: 'List user Kubernetes namespaces',
+        description:
+          'Get k8s namespaces for the current user. Uses user token to return only user-owned namespaces.',
         security: [{ BearerAuth: [] }, { BasicAuth: [] }],
         response: {
           200: {
-            description: 'Successful response',
+            description: 'Successful response - List of user namespaces',
             type: 'array',
             items: {
               type: 'object',
@@ -50,6 +53,11 @@ export async function registerNamespaceRoutes(fastify: FastifyInstance): Promise
                 name: { type: 'string' },
                 attributes: {
                   type: 'object',
+                  properties: {
+                    phase: { type: 'string' },
+                    description: { type: 'string' },
+                    displayName: { type: 'string' },
+                  },
                   additionalProperties: { type: 'string' },
                 },
               },
@@ -78,26 +86,30 @@ export async function registerNamespaceRoutes(fastify: FastifyInstance): Promise
     },
     async (request: FastifyRequest, reply: FastifyReply) => {
       try {
-        // Use service account token for listing namespaces (cluster-level operation)
-        // The service account has permissions to list all che namespaces
-        const serviceAccountToken = getServiceAccountToken();
-        if (!serviceAccountToken) {
-          return reply.code(500).send({
-            error: 'Internal Server Error',
-            message: 'Service account token not available',
+        // Ensure user is authenticated
+        if (!request.subject) {
+          return reply.code(401).send({
+            error: 'Unauthorized',
+            message: 'Authentication required',
           });
         }
 
-        // Create KubeConfig with service account token
-        const kubeConfig = getKubeConfig(serviceAccountToken);
+        // Use user's token to list only their namespaces
+        // The user token provides RBAC-based filtering automatically
+        const userToken = request.subject.token;
 
-        // Create factory with service account config
+        // Create KubeConfig with user's token
+        const kubeConfig = getKubeConfig(userToken);
+
+        // Create factory with user's config
         const namespaceFactory = new KubernetesNamespaceFactory(namespaceTemplate, kubeConfig);
 
-        const namespaces = await namespaceFactory.list();
+        // List namespaces for this specific user
+        const namespaces = await namespaceFactory.listForUser(request.subject.userId);
+
         return reply.code(200).send(namespaces);
       } catch (error: any) {
-        fastify.log.error('Error fetching namespaces:', error);
+        fastify.log.error('Error fetching user namespaces:', error);
         return reply.code(500).send({
           error: 'Internal Server Error',
           message: 'Internal server error occurred during namespaces fetching',
