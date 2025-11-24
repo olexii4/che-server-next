@@ -227,12 +227,17 @@ describe('serverConfigRoutes', () => {
       expect(body.dashboardLogo).toBe('https://example.com/logo.png');
     });
 
-    // TODO: Fix env var handling in tests
-    it.skip('should include container build config when enabled', async () => {
+    it('should include container build config when enabled', async () => {
+      // Set env vars BEFORE creating Fastify instance
       process.env.CHE_CONTAINER_BUILD_ENABLED = 'true';
       process.env.CHE_CONTAINER_BUILD_CONFIGURATION = '{"key": "value"}';
 
-      const response = await fastify.inject({
+      // Create new Fastify instance with these env vars
+      const testFastify = Fastify();
+      await registerServerConfigRoutes(testFastify);
+      await testFastify.ready();
+
+      const response = await testFastify.inject({
         method: 'GET',
         url: '/api/server-config',
       });
@@ -241,14 +246,21 @@ describe('serverConfigRoutes', () => {
       const body = JSON.parse(response.body);
       expect(body.containerBuild).toBeDefined();
       expect(body.containerBuild.containerBuildConfiguration).toEqual({ key: 'value' });
+
+      await testFastify.close();
     });
 
-    // TODO: Fix env var handling in tests
-    it.skip('should include container run config when enabled', async () => {
+    it('should include container run config when enabled', async () => {
+      // Set env vars BEFORE creating Fastify instance
       process.env.CHE_CONTAINER_RUN_ENABLED = 'true';
       process.env.CHE_CONTAINER_RUN_CONFIGURATION = '{"runtime": "podman"}';
 
-      const response = await fastify.inject({
+      // Create new Fastify instance with these env vars
+      const testFastify = Fastify();
+      await registerServerConfigRoutes(testFastify);
+      await testFastify.ready();
+
+      const response = await testFastify.inject({
         method: 'GET',
         url: '/api/server-config',
       });
@@ -256,16 +268,23 @@ describe('serverConfigRoutes', () => {
       expect(response.statusCode).toBe(200);
       const body = JSON.parse(response.body);
       expect(body.containerRun).toBeDefined();
-      expect(body.containerRun.containerBuildConfiguration).toEqual({ runtime: 'podman' });
+      expect(body.containerRun.containerRunConfiguration).toEqual({ runtime: 'podman' });
+
+      await testFastify.close();
     });
 
-    // TODO: Fix env var handling in tests
-    it.skip('should include advanced authorization when configured', async () => {
+    it('should include advanced authorization when configured', async () => {
+      // Set env vars BEFORE creating Fastify instance
       process.env.CHE_ADVANCED_AUTH_ALLOW_USERS = 'user1,user2';
       process.env.CHE_ADVANCED_AUTH_ALLOW_GROUPS = 'group1';
       process.env.CHE_ADVANCED_AUTH_DENY_USERS = 'user3';
 
-      const response = await fastify.inject({
+      // Create new Fastify instance with these env vars
+      const testFastify = Fastify();
+      await registerServerConfigRoutes(testFastify);
+      await testFastify.ready();
+
+      const response = await testFastify.inject({
         method: 'GET',
         url: '/api/server-config',
       });
@@ -279,14 +298,21 @@ describe('serverConfigRoutes', () => {
         denyUsers: ['user3'],
       });
       expect(body.networking.auth.advancedAuthorization.denyGroups).toBeUndefined();
+
+      await testFastify.close();
     });
 
-    // TODO: Fix env var handling in tests
-    it.skip('should include editors visibility when configured', async () => {
+    it('should include editors visibility when configured', async () => {
+      // Set env vars BEFORE creating Fastify instance
       process.env.CHE_SHOW_DEPRECATED_EDITORS = 'true';
       process.env.CHE_HIDE_EDITORS_BY_ID = '["editor1", "editor2"]';
 
-      const response = await fastify.inject({
+      // Create new Fastify instance with these env vars
+      const testFastify = Fastify();
+      await registerServerConfigRoutes(testFastify);
+      await testFastify.ready();
+
+      const response = await testFastify.inject({
         method: 'GET',
         url: '/api/server-config',
       });
@@ -297,6 +323,8 @@ describe('serverConfigRoutes', () => {
         showDeprecated: true,
         hideById: ['editor1', 'editor2'],
       });
+
+      await testFastify.close();
     });
 
     it('should set autoProvision to false when explicitly disabled', async () => {

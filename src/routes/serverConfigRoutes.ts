@@ -44,8 +44,14 @@ export async function registerServerConfigRoutes(fastify: FastifyInstance): Prom
             description: 'Successful response',
             type: 'object',
             properties: {
-              containerBuild: { type: 'object' },
-              containerRun: { type: 'object' },
+              containerBuild: {
+                type: 'object',
+                additionalProperties: true,
+              },
+              containerRun: {
+                type: 'object',
+                additionalProperties: true,
+              },
               defaults: {
                 type: 'object',
                 properties: {
@@ -83,8 +89,14 @@ export async function registerServerConfigRoutes(fastify: FastifyInstance): Prom
               pluginRegistryInternalURL: { type: 'string' },
               allowedSourceUrls: { type: 'array', items: { type: 'string' } },
               dashboardLogo: { type: 'string' },
-              networking: { type: 'object' },
-              editorsVisibility: { type: 'object' },
+              networking: {
+                type: 'object',
+                additionalProperties: true,
+              },
+              editorsVisibility: {
+                type: 'object',
+                additionalProperties: true,
+              },
             },
           },
         },
@@ -246,7 +258,7 @@ function buildServerConfig(): ServerConfig {
   if (containerRunEnabled) {
     serverConfig.containerRun = {
       openShiftSecurityContextConstraint: process.env.CHE_CONTAINER_RUN_OSC || undefined,
-      containerBuildConfiguration: containerRunConfiguration,
+      containerRunConfiguration: containerRunConfiguration,
     };
   }
 

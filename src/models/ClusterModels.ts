@@ -57,6 +57,16 @@ export interface ContainerBuildConfiguration {
 }
 
 /**
+ * Container run configuration
+ */
+export interface ContainerRunConfiguration {
+  openShiftSecurityContextConstraint?: string;
+  containerRunConfiguration?: {
+    [key: string]: string;
+  };
+}
+
+/**
  * Server defaults configuration
  */
 export interface ServerDefaults {
@@ -127,7 +137,7 @@ export interface EditorsVisibilityConfig {
  */
 export interface ServerConfig {
   containerBuild?: ContainerBuildConfiguration;
-  containerRun?: ContainerBuildConfiguration;
+  containerRun?: ContainerRunConfiguration;
   defaults?: ServerDefaults;
   timeouts?: ServerTimeouts;
   devfileRegistry?: DevfileRegistryConfig;
