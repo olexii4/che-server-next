@@ -154,16 +154,20 @@ export async function registerUserProfileRoutes(fastify: FastifyInstance): Promi
         return reply.code(200).send(profile);
       } catch (error: any) {
         // Check if it's a 404 (Secret not found)
-        if (error.statusCode === 404 || error.response?.statusCode === 404) {
+        const statusCode = error.statusCode || error.response?.statusCode;
+        
+        if (statusCode === 404) {
           return reply.code(404).send({
+            statusCode: 404,
             error: 'Not Found',
-            message: 'User profile not found in this namespace',
+            message: error.message || `User profile not found in namespace ${request.params.namespace}`,
           });
         }
 
         fastify.log.error({ error }, 'Error getting user profile');
-        return reply.code(error.statusCode || 500).send({
-          error: 'Internal Server Error',
+        return reply.code(statusCode || 500).send({
+          statusCode: statusCode || 500,
+          error: statusCode === 403 ? 'Forbidden' : 'Internal Server Error',
           message: error.message || 'Failed to get user profile',
         });
       }

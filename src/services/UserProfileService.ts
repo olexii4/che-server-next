@@ -46,14 +46,27 @@ export class UserProfileService {
 
       const data = response.body.data;
       if (!data) {
-        throw new Error('User profile data is empty');
+        const error: any = new Error('User profile data is empty');
+        error.statusCode = 404;
+        throw error;
       }
 
       return {
         username: Buffer.from(data.name || '', 'base64').toString(),
         email: Buffer.from(data.email || '', 'base64').toString(),
       };
-    } catch (error) {
+    } catch (error: any) {
+      // Check if it's a 404 (Secret not found)
+      const statusCode = error.statusCode || error.response?.statusCode;
+      
+      if (statusCode === 404) {
+        logger.info({ namespace }, `User profile secret not found in namespace`);
+        const notFoundError: any = new Error(`User profile not found in namespace ${namespace}`);
+        notFoundError.statusCode = 404;
+        throw notFoundError;
+      }
+
+      // For other errors, log and re-throw
       logger.error({ error, namespace }, 'Error getting user profile');
       throw error;
     }
