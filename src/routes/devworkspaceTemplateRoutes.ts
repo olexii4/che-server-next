@@ -51,22 +51,43 @@ const DEVWORKSPACE_TEMPLATE_SCHEMA = {
         annotations: {
           type: 'object',
           additionalProperties: { type: 'string' },
-          description: 'Annotations including che.eclipse.org/* settings',
+          description: 'Annotations including che.eclipse.org/components-update-policy, che.eclipse.org/plugin-registry-url',
+        },
+        labels: {
+          type: 'object',
+          additionalProperties: { type: 'string' },
+          description: 'Labels for Kubernetes resource selection',
+        },
+        managedFields: {
+          type: 'array',
+          items: {
+            type: 'object',
+            properties: {
+              apiVersion: { type: 'string' },
+              fieldsType: { type: 'string' },
+              fieldsV1: { type: 'object', additionalProperties: true },
+              manager: { type: 'string' },
+              operation: { type: 'string' },
+              time: { type: 'string' },
+            },
+          },
+          description: 'Field management metadata',
         },
         ownerReferences: {
           type: 'array',
           items: {
             type: 'object',
             properties: {
-              apiVersion: { type: 'string' },
-              kind: { type: 'string' },
-              name: { type: 'string' },
-              uid: { type: 'string' },
+              apiVersion: { type: 'string', description: 'API version of the owner' },
+              kind: { type: 'string', description: 'Kind of the owner (devworkspace)' },
+              name: { type: 'string', description: 'Name of the owner DevWorkspace' },
+              uid: { type: 'string', description: 'UID of the owner' },
             },
           },
-          description: 'Owner references (typically DevWorkspace)',
+          description: 'Owner references (typically DevWorkspace that owns this template)',
         },
       },
+      description: 'Kubernetes metadata including name, namespace, annotations, and owner references',
     },
     spec: {
       type: 'object',
@@ -211,124 +232,7 @@ export async function registerDevWorkspaceTemplateRoutes(fastify: FastifyInstanc
           200: {
             description: 'List of DevWorkspaceTemplates',
             type: 'array',
-            items: {
-              type: 'object',
-              properties: {
-                apiVersion: { type: 'string' },
-                kind: { type: 'string' },
-                metadata: {
-                  type: 'object',
-                  properties: {
-                    name: { type: 'string' },
-                    namespace: { type: 'string' },
-                    uid: { type: 'string' },
-                    resourceVersion: { type: 'string' },
-                    creationTimestamp: { type: 'string' },
-                    generation: { type: 'number' },
-                    annotations: { type: 'object', additionalProperties: { type: 'string' } },
-                    ownerReferences: {
-                      type: 'array',
-                      items: {
-                        type: 'object',
-                        properties: {
-                          apiVersion: { type: 'string' },
-                          kind: { type: 'string' },
-                          name: { type: 'string' },
-                          uid: { type: 'string' },
-                        },
-                      },
-                    },
-                  },
-                },
-                spec: {
-                  type: 'object',
-                  properties: {
-                    commands: {
-                      type: 'array',
-                      items: {
-                        type: 'object',
-                        properties: {
-                          id: { type: 'string' },
-                          apply: { type: 'object', properties: { component: { type: 'string' } } },
-                          exec: {
-                            type: 'object',
-                            properties: {
-                              commandLine: { type: 'string' },
-                              component: { type: 'string' },
-                            },
-                          },
-                        },
-                      },
-                    },
-                    components: {
-                      type: 'array',
-                      items: {
-                        type: 'object',
-                        properties: {
-                          name: { type: 'string' },
-                          attributes: { type: 'object', additionalProperties: true },
-                          container: {
-                            type: 'object',
-                            properties: {
-                              image: { type: 'string' },
-                              command: { type: 'array', items: { type: 'string' } },
-                              env: {
-                                type: 'array',
-                                items: {
-                                  type: 'object',
-                                  properties: {
-                                    name: { type: 'string' },
-                                    value: { type: 'string' },
-                                  },
-                                },
-                              },
-                              memoryLimit: { type: 'string' },
-                              memoryRequest: { type: 'string' },
-                              cpuLimit: { type: 'string' },
-                              cpuRequest: { type: 'string' },
-                              volumeMounts: {
-                                type: 'array',
-                                items: {
-                                  type: 'object',
-                                  properties: {
-                                    name: { type: 'string' },
-                                    path: { type: 'string' },
-                                  },
-                                },
-                              },
-                              endpoints: {
-                                type: 'array',
-                                items: {
-                                  type: 'object',
-                                  properties: {
-                                    name: { type: 'string' },
-                                    targetPort: { type: 'number' },
-                                    exposure: { type: 'string' },
-                                    protocol: { type: 'string' },
-                                    secure: { type: 'boolean' },
-                                    attributes: { type: 'object', additionalProperties: true },
-                                  },
-                                },
-                              },
-                            },
-                          },
-                          volume: { type: 'object' },
-                        },
-                      },
-                    },
-                    events: {
-                      type: 'object',
-                      properties: {
-                        preStart: { type: 'array', items: { type: 'string' } },
-                        postStart: { type: 'array', items: { type: 'string' } },
-                        preStop: { type: 'array', items: { type: 'string' } },
-                        postStop: { type: 'array', items: { type: 'string' } },
-                      },
-                    },
-                  },
-                },
-              },
-            },
+            items: DEVWORKSPACE_TEMPLATE_SCHEMA,
           },
         },
       },
