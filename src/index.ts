@@ -193,37 +193,6 @@ async function start() {
       { prefix: '/api' },
     );
 
-    // Register the same routes under /dashboard/api for backwards compatibility
-    // Eclipse Che Dashboard may use either /api or /dashboard/api paths
-    await fastify.register(
-      async (dashboardApiInstance: FastifyInstance) => {
-        await registerNamespaceRoutes(dashboardApiInstance);
-        await registerFactoryRoutes(dashboardApiInstance);
-        await registerOAuthRoutes(dashboardApiInstance);
-        await registerScmRoutes(dashboardApiInstance);
-        await registerDataResolverRoutes(dashboardApiInstance);
-        await registerClusterInfoRoutes(dashboardApiInstance);
-        await registerClusterConfigRoutes(dashboardApiInstance);
-        await registerServerConfigRoutes(dashboardApiInstance);
-        await registerDevWorkspaceRoutes(dashboardApiInstance);
-        await registerDevWorkspaceTemplateRoutes(dashboardApiInstance);
-        await registerDevWorkspaceResourcesRoutes(dashboardApiInstance);
-        await registerDevWorkspaceClusterRoutes(dashboardApiInstance);
-        await registerPodsRoutes(dashboardApiInstance);
-        await registerEventsRoutes(dashboardApiInstance);
-        await registerEditorsRoutes(dashboardApiInstance);
-        await registerUserProfileRoutes(dashboardApiInstance);
-        await registerSshKeysRoutes(dashboardApiInstance);
-        await registerPersonalAccessTokenRoutes(dashboardApiInstance);
-        await registerGitConfigRoutes(dashboardApiInstance);
-        await registerDockerConfigRoutes(dashboardApiInstance);
-        await registerWorkspacePreferencesRoutes(dashboardApiInstance);
-        await registerGettingStartedSampleRoutes(dashboardApiInstance);
-        await registerSystemRoutes(dashboardApiInstance);
-      },
-      { prefix: '/dashboard/api' },
-    );
-
     // Health check endpoints for Kubernetes
     fastify.get('/healthz', async (request, reply) => {
       return reply.code(200).send({ status: 'ok' });
@@ -265,7 +234,6 @@ async function start() {
     logger.info(`   OpenAPI JSON: http://localhost:${PORT}/swagger/json`);
     logger.info(`   OpenAPI YAML: http://localhost:${PORT}/swagger/yaml`);
     logger.info(`\n🔗 Endpoints:`);
-    logger.info(`   Note: All endpoints available at both /api/* and /dashboard/api/* for compatibility`);
     logger.info(`\n   Cluster & Server Config:`);
     logger.info(`   GET  http://localhost:${PORT}/api/cluster-info`);
     logger.info(`   GET  http://localhost:${PORT}/api/cluster-config`);
