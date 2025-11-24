@@ -31,6 +31,7 @@ export async function registerUserProfileRoutes(fastify: FastifyInstance): Promi
    * Get current user ID (UUID)
    *
    * This endpoint returns the UUID of the currently authenticated user.
+   * The UUID is read from the user-profile Secret's 'id' field in the user's namespace.
    * Compatible with Eclipse Che Server API: https://github.com/eclipse-che/che-server
    *
    * @returns {string} User UUID (e.g., "d4810a4f-169f-4da5-a8e0-d8dff7ecf959")
@@ -42,7 +43,7 @@ export async function registerUserProfileRoutes(fastify: FastifyInstance): Promi
         tags: ['user'],
         summary: 'Get current user ID (UUID)',
         description:
-          'Returns the UUID of the currently authenticated user. This is extracted from the JWT sub claim or provided in the authentication token.',
+          "Returns the UUID of the currently authenticated user. This is read from the user-profile Secret in the user's namespace.",
         security: [{ BearerAuth: [] }],
         response: {
           200: {
@@ -71,9 +72,17 @@ export async function registerUserProfileRoutes(fastify: FastifyInstance): Promi
           });
         }
 
-        // Return the user ID (UUID) from the authenticated subject
-        // This is extracted from JWT sub claim or provided in Bearer token format: uuid:username
-        return reply.code(200).send(request.subject.id);
+        // Get user's namespace from username
+        const username = request.subject.userName;
+        const namespace = `${username}-che`;
+
+        // Read user profile from the user-profile secret in the namespace
+        const kubeConfig = getKubeConfig(request.subject.token);
+        const service = new UserProfileService(kubeConfig);
+        const userProfile = await service.getUserProfile(namespace);
+
+        // Return the UUID from the user-profile secret
+        return reply.code(200).send(userProfile.id);
       } catch (error: any) {
         fastify.log.error({ error }, 'Error getting user ID');
         return reply.code(500).send({
@@ -160,7 +169,7 @@ export async function registerUserProfileRoutes(fastify: FastifyInstance): Promi
       } catch (error: any) {
         // Only handle non-404 errors now (403, 500, etc.)
         const statusCode = error.statusCode || error.response?.statusCode || 500;
-        
+
         fastify.log.error({ error }, 'Error getting user profile');
         return reply.code(statusCode).send({
           statusCode: statusCode,
