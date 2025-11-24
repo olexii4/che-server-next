@@ -72,6 +72,7 @@ export async function registerUserProfileRoutes(fastify: FastifyInstance): Promi
     async (request: FastifyRequest, reply: FastifyReply) => {
       try {
         if (!request.subject) {
+          fastify.log.warn('❌ /api/user/id - No authentication');
           return reply.code(401).send({
             error: 'Unauthorized',
             message: 'Authentication required',
@@ -82,10 +83,13 @@ export async function registerUserProfileRoutes(fastify: FastifyInstance): Promi
         const username = request.subject.userName;
         const namespace = `${username}-che`;
 
+        fastify.log.info({ username, namespace }, '📋 GET /api/user/id - Fetching user ID');
+
         // Use service account token to read the user-profile secret
         // (similar to how we handle namespace operations)
         const serviceAccountToken = getServiceAccountToken();
         if (!serviceAccountToken) {
+          fastify.log.error('❌ Service account token not available');
           return reply.code(500).send({
             error: 'Internal Server Error',
             message: 'Service account token not available',
@@ -97,12 +101,12 @@ export async function registerUserProfileRoutes(fastify: FastifyInstance): Promi
         const service = new UserProfileService(kubeConfig);
         const userProfile = await service.getUserProfile(namespace);
 
-        fastify.log.info({ username, namespace, userId: userProfile.id }, 'Retrieved user ID from user-profile secret');
+        fastify.log.info({ username, namespace, userId: userProfile.id }, '✅ Retrieved user ID successfully');
 
         // Return the UUID from the user-profile secret
         return reply.code(200).send(userProfile.id);
       } catch (error: any) {
-        fastify.log.error({ error }, 'Error getting user ID');
+        fastify.log.error({ error }, '❌ Error getting user ID');
         return reply.code(500).send({
           error: 'Internal Server Error',
           message: error.message || 'Failed to get user ID',
@@ -174,15 +178,19 @@ export async function registerUserProfileRoutes(fastify: FastifyInstance): Promi
     async (request: FastifyRequest<{ Params: NamespacedParams }>, reply: FastifyReply) => {
       try {
         if (!request.subject) {
+          fastify.log.warn({ namespace: request.params.namespace }, '❌ /api/userprofile/:namespace - No authentication');
           return reply.code(401).send({ error: 'Unauthorized' });
         }
 
         const { namespace } = request.params;
 
+        fastify.log.info({ namespace, authenticatedUser: request.subject.userName }, '📋 GET /api/userprofile/:namespace - Fetching profile');
+
         // Use service account token to read the user-profile secret
         // (consistent with /api/user/id and namespace operations)
         const serviceAccountToken = getServiceAccountToken();
         if (!serviceAccountToken) {
+          fastify.log.error('❌ Service account token not available');
           return reply.code(500).send({
             statusCode: 500,
             error: 'Internal Server Error',
@@ -196,14 +204,14 @@ export async function registerUserProfileRoutes(fastify: FastifyInstance): Promi
         // getUserProfile now always returns a profile (default if Secret doesn't exist)
         const profile = await service.getUserProfile(namespace);
         
-        fastify.log.info({ namespace, username: profile.username }, 'Retrieved user profile');
+        fastify.log.info({ namespace, userId: profile.id, username: profile.username, email: profile.email }, '✅ Retrieved user profile successfully');
         
         return reply.code(200).send(profile);
       } catch (error: any) {
         // Only handle non-404 errors now (403, 500, etc.)
         const statusCode = error.statusCode || error.response?.statusCode || 500;
 
-        fastify.log.error({ error, namespace: request.params.namespace }, 'Error getting user profile');
+        fastify.log.error({ error, namespace: request.params.namespace, statusCode }, '❌ Error getting user profile');
         return reply.code(statusCode).send({
           statusCode: statusCode,
           error: statusCode === 403 ? 'Forbidden' : 'Internal Server Error',
