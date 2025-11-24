@@ -76,10 +76,12 @@ function decodeJwtPayload(token: string): any {
  * Returns null if TokenReview is not available or fails
  */
 async function getUsernameFromK8sToken(token: string): Promise<string | null> {
+  let timeoutId: NodeJS.Timeout | undefined;
+  
   try {
     // Add timeout to prevent hanging
     const timeoutPromise = new Promise<null>(resolve => {
-      setTimeout(() => {
+      timeoutId = setTimeout(() => {
         logger.warn('TokenReview API call timed out after 3 seconds');
         resolve(null);
       }, 3000);
@@ -133,10 +135,16 @@ async function getUsernameFromK8sToken(token: string): Promise<string | null> {
 
     // Race between TokenReview and timeout
     const result = await Promise.race([tokenReviewPromise, timeoutPromise]);
+    
     return result;
   } catch (error: any) {
     logger.error({ error: error.message }, 'Failed to validate token with TokenReview API');
     return null;
+  } finally {
+    // Always clear the timeout to prevent Jest from hanging
+    if (timeoutId) {
+      clearTimeout(timeoutId);
+    }
   }
 }
 
