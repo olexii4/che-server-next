@@ -865,6 +865,8 @@ chectl server:deploy --platform=openshift --che-operator-cr-patch-yaml=$(PWD)/cr
 
 ### Updating Existing Eclipse Che Instance
 
+#### Option 1: Using chectl (Recommended)
+
 To update an already running Eclipse Che instance to use your custom che-server image:
 
 ```bash
@@ -874,10 +876,42 @@ chectl server:update --che-operator-cr-patch-yaml=$(PWD)/cr-patch.yaml
 This command will:
 1. Patch the existing CheCluster Custom Resource
 2. Trigger a rolling update of the che-server deployment
-3. Pull the new image (`olexii4dockerid/che-server:next`)
+3. Pull the new image (`docker.io/olexii4dockerid/che-server:next`)
 4. Restart the che-server pod with the updated image
 
 **Note:** Make sure you're in the project root directory or provide the full path to `cr-patch.yaml`.
+
+#### Option 2: Using kubectl patch (Direct)
+
+Alternative method using `kubectl` to directly patch the CheCluster:
+
+```bash
+kubectl patch -n eclipse-che "checluster/eclipse-che" --type=json \
+  -p='[{"op": "replace", "path": "/spec/components/cheServer/deployment", "value": {containers: [{image: "docker.io/olexii4dockerid/che-server:next", imagePullPolicy: "Always", name: "che-server"}]}}]'
+```
+
+**For other container registries:**
+
+Quay.io (che-incubator):
+```bash
+kubectl patch -n eclipse-che "checluster/eclipse-che" --type=json \
+  -p='[{"op": "replace", "path": "/spec/components/cheServer/deployment", "value": {containers: [{image: "quay.io/che-incubator/che-server-next:next", imagePullPolicy: "Always", name: "che-server"}]}}]'
+```
+
+**Verify the update:**
+
+```bash
+# Check CheCluster status
+kubectl get checluster eclipse-che -n eclipse-che -o jsonpath='{.spec.components.cheServer.deployment.containers[0].image}'
+
+# Watch pod restart
+kubectl get pods -n eclipse-che -l app.kubernetes.io/name=che -w
+
+# Check logs
+kubectl logs -n eclipse-che -l app.kubernetes.io/name=che -f
+```
+
+**Reference:** Based on Eclipse Che Dashboard PR workflow - [che-dashboard#1413](https://github.com/eclipse-che/che-dashboard/pull/1413#issuecomment-3563437159)
 
 ### Prerequisites
 
