@@ -898,6 +898,25 @@ kubectl patch -n eclipse-che "checluster/eclipse-che" --type=json \
   -p='[{"op": "replace", "path": "/spec/components/cheServer/deployment", "value": {containers: [{image: "quay.io/che-incubator/che-server-next:next", imagePullPolicy: "Always", name: "che-server"}]}}]'
 ```
 
+**For custom namespace or CheCluster name:**
+
+```bash
+# Replace 'my-namespace' and 'my-che-cluster' with actual values
+kubectl patch -n my-namespace "checluster/my-che-cluster" --type=json \
+  -p='[{"op": "replace", "path": "/spec/components/cheServer/deployment", "value": {containers: [{image: "docker.io/olexii4dockerid/che-server:next", imagePullPolicy: "Always", name: "che-server"}]}}]'
+```
+
+**Update both che-server and dashboard (combined patch):**
+
+```bash
+# Update both components in a single command
+kubectl patch -n eclipse-che "checluster/eclipse-che" --type=json \
+  -p='[
+    {"op": "replace", "path": "/spec/components/cheServer/deployment", "value": {containers: [{image: "docker.io/olexii4dockerid/che-server:next", imagePullPolicy: "Always", name: "che-server"}]}},
+    {"op": "replace", "path": "/spec/components/dashboard/deployment", "value": {containers: [{image: "quay.io/abazko/che-dashboard:test-registry", imagePullPolicy: "Always", name: "che-dashboard"}]}}
+  ]'
+```
+
 **Verify the update:**
 
 ```bash
