@@ -890,14 +890,6 @@ kubectl patch -n eclipse-che "checluster/eclipse-che" --type=json \
   -p='[{"op": "replace", "path": "/spec/components/cheServer/deployment", "value": {containers: [{image: "docker.io/olexii4dockerid/che-server:next", imagePullPolicy: "Always", name: "che-server"}]}}]'
 ```
 
-**For other container registries:**
-
-Quay.io (che-incubator):
-```bash
-kubectl patch -n eclipse-che "checluster/eclipse-che" --type=json \
-  -p='[{"op": "replace", "path": "/spec/components/cheServer/deployment", "value": {containers: [{image: "quay.io/che-incubator/che-server-next:next", imagePullPolicy: "Always", name: "che-server"}]}}]'
-```
-
 **For custom namespace or CheCluster name:**
 
 ```bash
