@@ -32,11 +32,14 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        platform: [linux/amd64]
+        arch: [amd64]
         default: [true]
         include:
-          - platform: linux/arm64
+          - arch: arm64
             default: false
+    outputs:
+      amd64: ${{ steps.result-amd64.outputs.tag }}
+      arm64: ${{ steps.result-arm64.outputs.tag }}
     steps:
       -
         name: "Checkout Che Server Next source code"
@@ -48,7 +51,7 @@ jobs:
         name: "Set up QEMU"
         uses: docker/setup-qemu-action@v3
       -
-        name: "Set up Docker Buildx ${{ matrix.platform }}"
+        name: "Set up Docker Buildx"
         uses: docker/setup-buildx-action@v3
       -
         name: "Cache Docker layers"
@@ -65,19 +68,66 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
       -
-        name: "Build and push ${{ matrix.platform }}"
+        name: "Build and push ${{ matrix.arch }}"
         uses: docker/build-push-action@v5
         with:
           cache-from: type=local,src=/tmp/.buildx-cache
           cache-to: type=local,dest=/tmp/.buildx-cache
           context: ./${{ env.DIR_CHE_SERVER }}
           file: ./${{ env.DIR_CHE_SERVER }}/build/dockerfiles/Dockerfile
-          platforms: ${{ matrix.platform }}
+          platforms: linux/${{ matrix.arch }}
           push: ${{ matrix.default == true }}
           provenance: false
-          tags: ${{ env.ORGANIZATION }}/che-server:${{ env.IMAGE_VERSION }}
+          tags: ${{ env.ORGANIZATION }}/che-server:${{ matrix.arch }}-${{ env.IMAGE_VERSION }}
       -
-        id: result
-        name: "Build result outputs version"
-        if: ${{ success() }}
-        run: echo "${{ matrix.arch }}=${{ matrix.arch }}-next" >> $GITHUB_OUTPUT
+        id: result-amd64
+        name: "amd64 result"
+        if: ${{ success() && matrix.arch == 'amd64' }}
+        run: echo "tag=amd64-${{ env.IMAGE_VERSION }}" >> $GITHUB_OUTPUT
+      -
+        id: result-arm64
+        name: "arm64 result"
+        if: ${{ success() && matrix.arch == 'arm64' }}
+        run: echo "tag=arm64-${{ env.IMAGE_VERSION }}" >> $GITHUB_OUTPUT
+
+  create-manifest:
+    needs: build-images
+    runs-on: ubuntu-22.04
+    steps:
+      -
+        name: "Login to Docker Hub"
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+      -
+        name: "Create and push manifest"
+        run: |
+          AMEND=""
+          
+          # Add amd64 image if build succeeded
+          AMD64_TAG="${{ needs.build-images.outputs.amd64 }}"
+          if [ -n "$AMD64_TAG" ]; then
+            echo "Adding amd64 image: ${{ env.ORGANIZATION }}/che-server:$AMD64_TAG"
+            AMEND+=" --amend ${{ env.ORGANIZATION }}/che-server:$AMD64_TAG"
+          fi
+          
+          # Add arm64 image if build succeeded
+          ARM64_TAG="${{ needs.build-images.outputs.arm64 }}"
+          if [ -n "$ARM64_TAG" ]; then
+            echo "Adding arm64 image: ${{ env.ORGANIZATION }}/che-server:$ARM64_TAG"
+            AMEND+=" --amend ${{ env.ORGANIZATION }}/che-server:$ARM64_TAG"
+          fi
+          
+          # Check if we have at least one image
+          if [ -z "$AMEND" ]; then
+            echo "❌ Error: No images built successfully. Cannot create manifest."
+            exit 1
+          fi
+          
+          # Create and push multiarch manifest
+          echo "Creating manifest: ${{ env.ORGANIZATION }}/che-server:${{ env.IMAGE_VERSION }}"
+          docker manifest create ${{ env.ORGANIZATION }}/che-server:${{ env.IMAGE_VERSION }} $AMEND
+          docker manifest push ${{ env.ORGANIZATION }}/che-server:${{ env.IMAGE_VERSION }}
+          
+          echo "✅ Multiarch manifest created and pushed successfully!"
