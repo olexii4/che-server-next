@@ -13,6 +13,7 @@
 import { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 
 import { getKubeConfig } from '../helpers/getKubernetesClient';
+import { getServiceAccountToken } from '../helpers/getServiceAccountToken';
 import { UserProfileService } from '../services/UserProfileService';
 
 interface NamespacedParams {
@@ -32,6 +33,11 @@ export async function registerUserProfileRoutes(fastify: FastifyInstance): Promi
    *
    * This endpoint returns the UUID of the currently authenticated user.
    * The UUID is read from the user-profile Secret's 'id' field in the user's namespace.
+   * Uses service account token for Kubernetes operations (similar to namespace provisioning).
+   * 
+   * Based on Java implementation:
+   * eclipse-che/che-server/infrastructures/kubernetes/.../UserProfileConfigurator.java
+   * 
    * Compatible with Eclipse Che Server API: https://github.com/eclipse-che/che-server
    *
    * @returns {string} User UUID (e.g., "d4810a4f-169f-4da5-a8e0-d8dff7ecf959")
@@ -76,10 +82,22 @@ export async function registerUserProfileRoutes(fastify: FastifyInstance): Promi
         const username = request.subject.userName;
         const namespace = `${username}-che`;
 
+        // Use service account token to read the user-profile secret
+        // (similar to how we handle namespace operations)
+        const serviceAccountToken = getServiceAccountToken();
+        if (!serviceAccountToken) {
+          return reply.code(500).send({
+            error: 'Internal Server Error',
+            message: 'Service account token not available',
+          });
+        }
+
         // Read user profile from the user-profile secret in the namespace
-        const kubeConfig = getKubeConfig(request.subject.token);
+        const kubeConfig = getKubeConfig(serviceAccountToken);
         const service = new UserProfileService(kubeConfig);
         const userProfile = await service.getUserProfile(namespace);
+
+        fastify.log.info({ username, namespace, userId: userProfile.id }, 'Retrieved user ID from user-profile secret');
 
         // Return the UUID from the user-profile secret
         return reply.code(200).send(userProfile.id);
