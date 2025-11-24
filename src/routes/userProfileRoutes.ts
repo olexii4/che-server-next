@@ -28,23 +28,27 @@ export async function registerUserProfileRoutes(fastify: FastifyInstance): Promi
   /**
    * GET /api/user/id
    *
-   * Get current user ID
+   * Get current user ID (UUID)
    *
-   * This endpoint returns the ID of the currently authenticated user.
+   * This endpoint returns the UUID of the currently authenticated user.
    * Compatible with Eclipse Che Server API: https://github.com/eclipse-che/che-server
+   *
+   * @returns {string} User UUID (e.g., "d4810a4f-169f-4da5-a8e0-d8dff7ecf959")
    */
   fastify.get(
     '/user/id',
     {
       schema: {
         tags: ['user'],
-        summary: 'Get current user ID',
-        description: 'Returns the ID of the currently authenticated user',
+        summary: 'Get current user ID (UUID)',
+        description:
+          'Returns the UUID of the currently authenticated user. This is extracted from the JWT sub claim or provided in the authentication token.',
         security: [{ BearerAuth: [] }],
         response: {
           200: {
-            description: 'User ID',
+            description: 'User UUID',
             type: 'string',
+            examples: ['d4810a4f-169f-4da5-a8e0-d8dff7ecf959'],
           },
           401: {
             description: 'Unauthorized',
@@ -67,8 +71,9 @@ export async function registerUserProfileRoutes(fastify: FastifyInstance): Promi
           });
         }
 
-        // Return the user ID from the authenticated subject
-        return reply.code(200).send(request.subject.userId);
+        // Return the user ID (UUID) from the authenticated subject
+        // This is extracted from JWT sub claim or provided in Bearer token format: uuid:username
+        return reply.code(200).send(request.subject.id);
       } catch (error: any) {
         fastify.log.error({ error }, 'Error getting user ID');
         return reply.code(500).send({

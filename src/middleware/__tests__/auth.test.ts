@@ -33,7 +33,7 @@ describe('Authentication Middleware', () => {
       expect(mockRequest.subject).toBeUndefined();
     });
 
-    it('should parse Bearer token in test format (userid:username)', async () => {
+    it('should parse Bearer token in test format (id:username)', async () => {
       mockRequest.headers = {
         authorization: 'Bearer user123:johndoe',
       };
@@ -41,7 +41,8 @@ describe('Authentication Middleware', () => {
       await authenticate(mockRequest as FastifyRequest, mockReply as FastifyReply);
 
       expect(mockRequest.subject).toEqual({
-        userId: 'user123',
+        id: 'user123',
+        userId: 'johndoe',
         userName: 'johndoe',
         token: 'user123:johndoe',
       });
@@ -55,6 +56,7 @@ describe('Authentication Middleware', () => {
       await authenticate(mockRequest as FastifyRequest, mockReply as FastifyReply);
 
       expect(mockRequest.subject).toEqual({
+        id: 'kube-user',
         userId: 'kube-user',
         userName: 'kube-user',
         token: 'sha256~zpxqr6PzbWNyTzX7d4mUfiONB0-QSLn7-JQFsiMF0S8',
@@ -70,7 +72,8 @@ describe('Authentication Middleware', () => {
       await authenticate(mockRequest as FastifyRequest, mockReply as FastifyReply);
 
       expect(mockRequest.subject).toEqual({
-        userId: 'user123',
+        id: 'user123',
+        userId: 'johndoe',
         userName: 'johndoe',
         token: 'johndoe:user123',
       });
@@ -85,6 +88,7 @@ describe('Authentication Middleware', () => {
       await authenticate(mockRequest as FastifyRequest, mockReply as FastifyReply);
 
       expect(mockRequest.subject).toEqual({
+        id: 'kube-user',
         userId: 'kube-user',
         userName: 'kube-user',
         token: 'invalid',
@@ -117,7 +121,8 @@ describe('Authentication Middleware', () => {
 
     it('should not return error when subject is set', async () => {
       mockRequest.subject = {
-        userId: 'user123',
+        id: 'user123',
+        userId: 'johndoe',
         userName: 'johndoe',
         token: 'user123:johndoe',
       };
