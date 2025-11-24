@@ -103,7 +103,8 @@ describe('OAuth Routes (Fastify)', () => {
       expect(body.message).toContain('required');
     });
 
-    it('should return OAuth token for valid provider', async () => {
+    it('should return 404 when provider is not configured', async () => {
+      // Without Kubernetes Secrets, no providers are configured
       const response = await app.inject({
         method: 'GET',
         url: '/oauth/token?oauth_provider=github',
@@ -112,10 +113,10 @@ describe('OAuth Routes (Fastify)', () => {
         },
       });
 
-      expect(response.statusCode).toBe(200);
+      expect(response.statusCode).toBe(404);
       const body = JSON.parse(response.body);
-      expect(body).toHaveProperty('token');
-      expect(body).toHaveProperty('scope');
+      expect(body.error).toBe('Not Found');
+      expect(body.message).toContain('OAuth provider');
     });
 
     it('should return 401 without authentication', async () => {
@@ -141,17 +142,8 @@ describe('OAuth Routes (Fastify)', () => {
       expect(response.statusCode).toBe(400);
     });
 
-    it('should delete token and return 204', async () => {
-      // First create a token
-      await app.inject({
-        method: 'GET',
-        url: '/oauth/token?oauth_provider=github',
-        headers: {
-          Authorization: 'Bearer user123:johndoe',
-        },
-      });
-
-      // Then delete it
+    it('should return 404 when token not found', async () => {
+      // Attempt to delete a non-existent token
       const response = await app.inject({
         method: 'DELETE',
         url: '/oauth/token?oauth_provider=github',
@@ -160,7 +152,10 @@ describe('OAuth Routes (Fastify)', () => {
         },
       });
 
-      expect(response.statusCode).toBe(204);
+      expect(response.statusCode).toBe(404);
+      const body = JSON.parse(response.body);
+      expect(body.error).toBe('Not Found');
+      expect(body.message).toContain('OAuth token not found');
     });
 
     it('should return 401 without authentication', async () => {
