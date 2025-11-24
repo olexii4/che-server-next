@@ -103,11 +103,12 @@ async function start() {
     // Setup Swagger/OpenAPI documentation
     await setupSwagger(fastify);
 
-    // Health check endpoint
+    // Health check endpoint (hidden from Swagger)
     fastify.get(
       '/health',
       {
         schema: {
+          hide: true,
           tags: ['health'],
           summary: 'Health check',
           description: 'Check if the API is running',
@@ -134,11 +135,12 @@ async function start() {
     // Register route modules with /api prefix (matches Java implementation)
     await fastify.register(
       async apiInstance => {
-        // Root API endpoint - returns API info (no auth required for CORS preflight)
+        // Root API endpoint - returns API info (no auth required for CORS preflight, hidden from Swagger)
         apiInstance.get(
           '/',
           {
             schema: {
+              hide: true,
               tags: ['api'],
               summary: 'API root endpoint',
               description: 'Returns API information and available endpoints',
@@ -193,16 +195,16 @@ async function start() {
       { prefix: '/api' },
     );
 
-    // Health check endpoints for Kubernetes
-    fastify.get('/healthz', async (request, reply) => {
+    // Health check endpoints for Kubernetes (hidden from Swagger)
+    fastify.get('/healthz', { schema: { hide: true } }, async (request, reply) => {
       return reply.code(200).send({ status: 'ok' });
     });
 
-    fastify.get('/readyz', async (request, reply) => {
+    fastify.get('/readyz', { schema: { hide: true } }, async (request, reply) => {
       return reply.code(200).send({ status: 'ready' });
     });
 
-    fastify.get('/livez', async (request, reply) => {
+    fastify.get('/livez', { schema: { hide: true } }, async (request, reply) => {
       return reply.code(200).send({ status: 'alive' });
     });
 
