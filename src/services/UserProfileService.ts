@@ -36,8 +36,11 @@ export class UserProfileService {
 
   /**
    * Get user profile from a namespace
+   * 
+   * If the user-profile Secret doesn't exist, returns a default profile
+   * extracted from the namespace name (e.g., "admin-che" -> username: "admin")
    */
-  async getUserProfile(namespace: string): Promise<UserProfile | undefined> {
+  async getUserProfile(namespace: string): Promise<UserProfile> {
     try {
       const response = await this.coreV1Api.readNamespacedSecret(
         USER_PROFILE_SECRET_NAME,
@@ -46,9 +49,8 @@ export class UserProfileService {
 
       const data = response.body.data;
       if (!data) {
-        const error: any = new Error('User profile data is empty');
-        error.statusCode = 404;
-        throw error;
+        logger.info({ namespace }, 'User profile secret exists but has no data, returning default');
+        return this.getDefaultProfile(namespace);
       }
 
       return {
@@ -60,15 +62,27 @@ export class UserProfileService {
       const statusCode = error.statusCode || error.response?.statusCode;
       
       if (statusCode === 404) {
-        logger.info({ namespace }, `User profile secret not found in namespace`);
-        const notFoundError: any = new Error(`User profile not found in namespace ${namespace}`);
-        notFoundError.statusCode = 404;
-        throw notFoundError;
+        logger.info({ namespace }, `User profile secret not found, returning default profile`);
+        return this.getDefaultProfile(namespace);
       }
 
-      // For other errors, log and re-throw
+      // For other errors (403, 500, etc.), log and re-throw
       logger.error({ error, namespace }, 'Error getting user profile');
       throw error;
     }
+  }
+
+  /**
+   * Get default profile from namespace name
+   * Extracts username from namespace (e.g., "admin-che" -> "admin")
+   */
+  private getDefaultProfile(namespace: string): UserProfile {
+    // Extract username from namespace (remove "-che" suffix if present)
+    const username = namespace.replace(/-che$/, '');
+    
+    return {
+      username: username,
+      email: `${username}@che.local`,
+    };
   }
 }

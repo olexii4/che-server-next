@@ -95,7 +95,8 @@ export async function registerUserProfileRoutes(fastify: FastifyInstance): Promi
       schema: {
         tags: ['user-profile'],
         summary: 'Get user profile',
-        description: 'Get user profile information (username, email) from a namespace',
+        description:
+          'Get user profile information (username, email) from a namespace. If the user-profile Secret does not exist, returns a default profile extracted from the namespace name.',
         params: {
           type: 'object',
           properties: {
@@ -106,7 +107,8 @@ export async function registerUserProfileRoutes(fastify: FastifyInstance): Promi
         security: [{ BearerAuth: [] }],
         response: {
           200: {
-            description: 'User profile',
+            description:
+              'User profile (from Secret if exists, or default profile derived from namespace name)',
             type: 'object',
             properties: {
               username: { type: 'string' },
@@ -120,10 +122,11 @@ export async function registerUserProfileRoutes(fastify: FastifyInstance): Promi
               error: { type: 'string' },
             },
           },
-          404: {
-            description: 'User profile not found',
+          403: {
+            description: 'Forbidden - no permission to access namespace',
             type: 'object',
             properties: {
+              statusCode: { type: 'number' },
               error: { type: 'string' },
               message: { type: 'string' },
             },
@@ -132,6 +135,7 @@ export async function registerUserProfileRoutes(fastify: FastifyInstance): Promi
             description: 'Internal Server Error',
             type: 'object',
             properties: {
+              statusCode: { type: 'number' },
               error: { type: 'string' },
               message: { type: 'string' },
             },
@@ -150,23 +154,16 @@ export async function registerUserProfileRoutes(fastify: FastifyInstance): Promi
         const kubeConfig = getKubeConfig(request.subject.token);
         const service = new UserProfileService(kubeConfig);
 
+        // getUserProfile now always returns a profile (default if Secret doesn't exist)
         const profile = await service.getUserProfile(namespace);
         return reply.code(200).send(profile);
       } catch (error: any) {
-        // Check if it's a 404 (Secret not found)
-        const statusCode = error.statusCode || error.response?.statusCode;
+        // Only handle non-404 errors now (403, 500, etc.)
+        const statusCode = error.statusCode || error.response?.statusCode || 500;
         
-        if (statusCode === 404) {
-          return reply.code(404).send({
-            statusCode: 404,
-            error: 'Not Found',
-            message: error.message || `User profile not found in namespace ${request.params.namespace}`,
-          });
-        }
-
         fastify.log.error({ error }, 'Error getting user profile');
-        return reply.code(statusCode || 500).send({
-          statusCode: statusCode || 500,
+        return reply.code(statusCode).send({
+          statusCode: statusCode,
           error: statusCode === 403 ? 'Forbidden' : 'Internal Server Error',
           message: error.message || 'Failed to get user profile',
         });
