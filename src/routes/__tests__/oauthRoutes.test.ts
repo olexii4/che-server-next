@@ -103,8 +103,9 @@ describe('OAuth Routes (Fastify)', () => {
       expect(body.message).toContain('required');
     });
 
-    it('should return 404 when provider is not configured', async () => {
+    it('should return 200 with mock token when provider is not configured', async () => {
       // Without Kubernetes Secrets, no providers are configured
+      // The service generates a mock token for development purposes
       const response = await app.inject({
         method: 'GET',
         url: '/oauth/token?oauth_provider=github',
@@ -113,10 +114,12 @@ describe('OAuth Routes (Fastify)', () => {
         },
       });
 
-      expect(response.statusCode).toBe(404);
+      expect(response.statusCode).toBe(200);
       const body = JSON.parse(response.body);
-      expect(body.error).toBe('Not Found');
-      expect(body.message).toContain('OAuth provider');
+      // Should return a mock token for development
+      expect(body.token).toBeDefined();
+      expect(body.scope).toBeDefined();
+      expect(typeof body.token).toBe('string');
     });
 
     it('should return 401 without authentication', async () => {

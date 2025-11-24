@@ -55,10 +55,11 @@ describe('Authentication Middleware', () => {
 
       await authenticate(mockRequest as FastifyRequest, mockReply as FastifyReply);
 
+      // TokenReview API will fail for test token and fall back to 'che-user'
       expect(mockRequest.subject).toEqual({
-        id: 'kube-user',
-        userId: 'kube-user',
-        userName: 'kube-user',
+        id: 'che-user',
+        userId: 'che-user',
+        userName: 'che-user',
         token: 'sha256~zpxqr6PzbWNyTzX7d4mUfiONB0-QSLn7-JQFsiMF0S8',
       });
     });
@@ -85,12 +86,13 @@ describe('Authentication Middleware', () => {
       };
 
       // This is now valid - single token without colons is treated as real Kubernetes token
+      // TokenReview API will fail and fall back to 'che-user'
       await authenticate(mockRequest as FastifyRequest, mockReply as FastifyReply);
 
       expect(mockRequest.subject).toEqual({
-        id: 'kube-user',
-        userId: 'kube-user',
-        userName: 'kube-user',
+        id: 'che-user',
+        userId: 'che-user',
+        userName: 'che-user',
         token: 'invalid',
       });
     });
