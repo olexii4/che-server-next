@@ -127,11 +127,14 @@ function parseBearerToken(token: string): Subject | null {
 
   // Real Kubernetes/OpenShift token (no colons, not a JWT)
   // Use as-is for Kubernetes API calls
-  logger.info(`✅ Kubernetes token (sha256~...): using kube-user`);
+  // Note: Cannot determine username from raw K8s token without API call
+  // When accessed through Che Gateway, gap-auth header will provide username
+  // For direct API access, will default to 'che-user'
+  logger.info(`✅ Kubernetes token (sha256~...): defaulting to che-user (use gap-auth header for correct username)`);
   return {
-    id: 'kube-user',
-    userId: 'kube-user',
-    userName: 'kube-user',
+    id: 'che-user',
+    userId: 'che-user',
+    userName: 'che-user',
     token: token,
   };
 }
