@@ -73,54 +73,69 @@ function decodeJwtPayload(token: string): any {
 
 /**
  * Extract username from Kubernetes token using TokenReview API
+ * Returns null if TokenReview is not available or fails
  */
 async function getUsernameFromK8sToken(token: string): Promise<string | null> {
   try {
-    const kc = new k8s.KubeConfig();
-    kc.loadFromDefault();
-    
-    const authApi = kc.makeApiClient(k8s.AuthenticationV1Api);
-    
-    // Create TokenReview request
-    const tokenReview: k8s.V1TokenReview = {
-      apiVersion: 'authentication.k8s.io/v1',
-      kind: 'TokenReview',
-      spec: {
-        token: token,
-      },
-    };
-    
-    const response = await authApi.createTokenReview(tokenReview);
-    
-    // Check if token is authenticated
-    if (response.body.status?.authenticated) {
-      const username = response.body.status.user?.username;
-      if (username) {
-        logger.info(`✅ Extracted username from K8s token: ${username}`);
-        
-        // Clean up username for namespace usage
-        // Remove system: prefix and kube: prefix if present
-        let cleanUsername = username;
-        if (cleanUsername.startsWith('system:serviceaccount:')) {
-          // Extract service account name: system:serviceaccount:namespace:name -> name
-          const parts = cleanUsername.split(':');
-          cleanUsername = parts[parts.length - 1];
-        } else if (cleanUsername.startsWith('kube:')) {
-          cleanUsername = cleanUsername.replace(/^kube:/, '');
-        } else if (cleanUsername.includes(':')) {
-          // For other system accounts, take the last part
-          const parts = cleanUsername.split(':');
-          cleanUsername = parts[parts.length - 1];
+    // Add timeout to prevent hanging
+    const timeoutPromise = new Promise<null>((resolve) => {
+      setTimeout(() => {
+        logger.warn('TokenReview API call timed out after 3 seconds');
+        resolve(null);
+      }, 3000);
+    });
+
+    const tokenReviewPromise = (async () => {
+      const kc = new k8s.KubeConfig();
+      kc.loadFromDefault();
+      
+      const authApi = kc.makeApiClient(k8s.AuthenticationV1Api);
+      
+      // Create TokenReview request
+      const tokenReview: k8s.V1TokenReview = {
+        apiVersion: 'authentication.k8s.io/v1',
+        kind: 'TokenReview',
+        spec: {
+          token: token,
+        },
+      };
+      
+      const response = await authApi.createTokenReview(tokenReview);
+      
+      // Check if token is authenticated
+      if (response.body.status?.authenticated) {
+        const username = response.body.status.user?.username;
+        if (username) {
+          logger.info(`✅ Extracted username from K8s token: ${username}`);
+          
+          // Clean up username for namespace usage
+          // Remove system: prefix and kube: prefix if present
+          let cleanUsername = username;
+          if (cleanUsername.startsWith('system:serviceaccount:')) {
+            // Extract service account name: system:serviceaccount:namespace:name -> name
+            const parts = cleanUsername.split(':');
+            cleanUsername = parts[parts.length - 1];
+          } else if (cleanUsername.startsWith('kube:')) {
+            cleanUsername = cleanUsername.replace(/^kube:/, '');
+          } else if (cleanUsername.includes(':')) {
+            // For other system accounts, take the last part
+            const parts = cleanUsername.split(':');
+            cleanUsername = parts[parts.length - 1];
+          }
+          
+          return cleanUsername;
         }
-        
-        return cleanUsername;
       }
-    }
-    
-    logger.warn('Token is not authenticated or has no username');
-    return null;
+      
+      logger.warn('Token is not authenticated or has no username');
+      return null;
+    })();
+
+    // Race between TokenReview and timeout
+    const result = await Promise.race([tokenReviewPromise, timeoutPromise]);
+    return result;
   } catch (error: any) {
-    logger.error({ error }, 'Failed to validate token with TokenReview API');
+    logger.error({ error: error.message }, 'Failed to validate token with TokenReview API');
     return null;
   }
 }
@@ -146,10 +161,10 @@ async function parseBearerToken(token: string): Promise<Subject | null> {
     };
   }
 
-  // Try to decode as JWT token (from Eclipse Che Gateway)
+  // Try to decode as JWT token (from Eclipse Che Gateway or Keycloak)
   const jwtPayload = decodeJwtPayload(token);
   if (jwtPayload) {
-    // Extract user ID (UUID) from JWT sub claim
+    // JWT token - extract username directly from claims (no TokenReview needed)
     const userId = jwtPayload.sub;
 
     // Extract username from JWT claims (in order of preference)
@@ -170,7 +185,7 @@ async function parseBearerToken(token: string): Promise<Subject | null> {
     }
 
     logger.info(
-      `✅ JWT token decoded: sub="${userId}", name="${jwtPayload.name}", username="${jwtPayload.username}", preferred_username="${jwtPayload.preferred_username}", email="${jwtPayload.email}" -> using id="${userId}", username="${username}"`,
+      `✅ JWT token decoded: sub="${userId}", preferred_username="${jwtPayload.preferred_username}" -> id="${userId}", username="${username}"`,
     );
 
     return {
@@ -183,7 +198,7 @@ async function parseBearerToken(token: string): Promise<Subject | null> {
 
   // Real Kubernetes/OpenShift token (no colons, not a JWT)
   // Use TokenReview API to get the username
-  logger.info(`🔍 Kubernetes token detected (sha256~...), querying TokenReview API for username`);
+  logger.info(`🔍 Kubernetes token detected (not JWT), querying TokenReview API for username`);
   
   const username = await getUsernameFromK8sToken(token);
   
@@ -197,8 +212,8 @@ async function parseBearerToken(token: string): Promise<Subject | null> {
     };
   }
   
-  // Fallback if TokenReview fails
-  logger.warn(`⚠️ Could not determine username from K8s token, using 'che-user' as fallback`);
+  // Fallback if TokenReview fails or is not available
+  logger.warn(`⚠️ TokenReview unavailable or failed, using 'che-user' as fallback`);
   return {
     id: 'che-user',
     userId: 'che-user',
