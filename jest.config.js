@@ -49,4 +49,6 @@ module.exports = {
     '^@/utils/logger$': '<rootDir>/src/utils/__mocks__/logger.ts',
   },
   setupFilesAfterEnv: ['<rootDir>/jest.setup.js'],
+  // Force exit after tests complete (prevents hanging from Kubernetes client connections)
+  forceExit: true,
 };
