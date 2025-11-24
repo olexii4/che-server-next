@@ -26,6 +26,7 @@ export async function registerSystemRoutes(fastify: FastifyInstance): Promise<vo
     '/system/state',
     {
       schema: {
+        hide: true, // Hide from Swagger UI (internal endpoint for Che Operator)
         description: 'Get current system state',
         tags: ['System'],
         response: {
