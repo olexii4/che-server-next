@@ -197,7 +197,7 @@ export async function registerNamespaceRoutes(fastify: FastifyInstance): Promise
 
         // Create factory and provisioner with service account config
         const namespaceFactory = new KubernetesNamespaceFactory(namespaceTemplate, kubeConfig);
-        const namespaceProvisioner = new NamespaceProvisioner(namespaceFactory);
+        const namespaceProvisioner = new NamespaceProvisioner(namespaceFactory, kubeConfig);
 
         // Create namespace resolution context from authenticated subject
         // This provides user identification for namespace naming (e.g., che-<username>)
