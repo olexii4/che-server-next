@@ -485,7 +485,7 @@ export class ScmRepositoryFactoryResolver extends BaseFactoryParameterResolver {
       if (error instanceof UnauthorizedException) {
         throw error;
       }
-      
+
       // If devfile is not found, return a basic factory response instead of error
       // This matches the Java Che Server behavior
       if (
@@ -494,10 +494,10 @@ export class ScmRepositoryFactoryResolver extends BaseFactoryParameterResolver {
         error.message?.includes('Requested file not found')
       ) {
         logger.info('No devfile found, returning basic factory response');
-        
+
         const scmProvider = this.detectScmProvider(url);
         const branch = this.extractBranchFromUrl(url);
-        
+
         // Return basic factory with empty devfile structure
         const factory: FactoryDevfileV2 = {
           source: 'repo',
@@ -512,10 +512,10 @@ export class ScmRepositoryFactoryResolver extends BaseFactoryParameterResolver {
           },
           links: this.generateFactoryLinks(url),
         };
-        
+
         return factory;
       }
-      
+
       // For other errors (parsing, validation, etc.), throw
       throw new Error(`Failed to resolve factory from ${url}: ${error.message}`);
     }
