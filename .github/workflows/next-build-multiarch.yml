@@ -82,13 +82,19 @@ jobs:
       -
         id: result-amd64
         name: "amd64 result"
-        if: ${{ success() && matrix.arch == 'amd64' }}
-        run: echo "tag=amd64-${{ env.IMAGE_VERSION }}" >> $GITHUB_OUTPUT
+        if: success() && matrix.arch == 'amd64'
+        run: |
+          TAG="amd64-${{ env.IMAGE_VERSION }}"
+          echo "tag=${TAG}" >> $GITHUB_OUTPUT
+          echo "Built amd64 tag: ${TAG}"
       -
         id: result-arm64
         name: "arm64 result"
-        if: ${{ success() && matrix.arch == 'arm64' }}
-        run: echo "tag=arm64-${{ env.IMAGE_VERSION }}" >> $GITHUB_OUTPUT
+        if: success() && matrix.arch == 'arm64'
+        run: |
+          TAG="arm64-${{ env.IMAGE_VERSION }}"
+          echo "tag=${TAG}" >> $GITHUB_OUTPUT
+          echo "Built arm64 tag: ${TAG}"
 
   create-manifest:
     needs: build-images
