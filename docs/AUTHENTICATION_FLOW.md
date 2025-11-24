@@ -98,14 +98,15 @@ Base64 decodes to: `johndoe:user123`
 
 ---
 
-### 5. Raw Kubernetes Token ⚠️ **Fallback**
+### 5. Raw Kubernetes Token ✅ **Direct API Access**
 
-**Used when:** Direct API access with service account or user token (not recommended for production)
+**Used when:** Direct API access with service account or user token
 
-**Problem:**
-- Kubernetes tokens (e.g., `sha256~abc123...`) don't contain username information
-- Cannot determine actual username without additional API call
-- Defaults to `che-user` as username
+**How it works:**
+- Client sends Kubernetes token (e.g., `sha256~...`) in Authorization header
+- Server calls Kubernetes TokenReview API to validate and extract username
+- Username is cleaned up (removes `system:`, `kube:` prefixes)
+- Namespace created with correct username
 
 **Example:**
 ```http
@@ -113,31 +114,66 @@ GET /api/kubernetes/namespace/provision
 Authorization: Bearer sha256~zpxqr6PzbWNyTzX7d4mUfiONB0-QSLn7-JQFsiMF0S8
 ```
 
-**Result:**
-- ⚠️ Username defaults to: `che-user`
-- ⚠️ Namespace created: `che-user-che` (not correct!)
+**TokenReview API Response:**
+```json
+{
+  "status": {
+    "authenticated": true,
+    "user": {
+      "username": "kube:admin"
+    }
+  }
+}
+```
 
-**Solution:**
-Access the API through the Eclipse Che Gateway which adds the `gap-auth` header with the correct username.
+**Result:**
+- ✅ Username extracted: `admin` (cleaned from `kube:admin`)
+- ✅ Namespace created: `admin-che`
+- ✅ User profile: `{username: "admin", email: "admin@che.local"}`
+
+**Fallback:**
+If TokenReview API fails, defaults to `che-user` as username.
 
 ---
 
 ## Deployment Recommendations
 
-### ✅ Production (OpenShift/Kubernetes)
+### ✅ Production (Direct API Access) - **Recommended for Customers**
 
 **Setup:**
-1. Deploy Eclipse Che with Gateway enabled
-2. All `/api/*` requests route through Gateway
-3. Gateway adds `gap-auth` header
-4. Users authenticate via Keycloak
+1. Deploy Che Server in Kubernetes/OpenShift
+2. Expose API at: `https://che-server-pod:8080/api/`
+3. Clients authenticate with Kubernetes tokens
+4. Server uses TokenReview API to extract usernames
 
 **URL Structure:**
 ```
-User Request → Che Gateway → Che Server
+User/Client → Che Server API (Direct)
                     ↓
-              Adds gap-auth header
+            TokenReview API validates token
+                    ↓
+            Username extracted automatically
 ```
+
+**Authentication Flow:**
+```
+1. Client accesses: https://che-server-pod:8080/api/kubernetes/namespace/provision
+2. Client sends: Authorization: Bearer sha256~abc123...
+3. Che Server calls TokenReview API
+4. TokenReview returns: username = "kube:admin"
+5. Server cleans username: "admin"
+6. Namespace created: admin-che ✅
+```
+
+---
+
+### 🧪 Testing with Eclipse Che Gateway
+
+**Setup:**
+1. Deploy Eclipse Che with Gateway enabled (test environments)
+2. All `/api/*` requests route through Gateway
+3. Gateway adds `gap-auth` header
+4. Users authenticate via Keycloak
 
 **Authentication Flow:**
 ```
@@ -181,11 +217,26 @@ User Request → Che Gateway → Che Server
 
 ### Problem: Wrong namespace name (`che-user-che` instead of `kubeadmin-che`)
 
-**Cause:** Using raw Kubernetes token without `gap-auth` header
+**Possible causes:**
+1. TokenReview API is not accessible from the pod
+2. Token doesn't have sufficient permissions
+3. TokenReview API call failed
 
-**Solution:** 
-1. Access through Eclipse Che Dashboard (production)
-2. Or add `gap-auth` header manually (testing):
+**Solutions:**
+1. **Check TokenReview API access:**
+   ```bash
+   kubectl auth can-i create tokenreviews.authentication.k8s.io --as=system:serviceaccount:eclipse-che:che
+   ```
+
+2. **Check pod logs for TokenReview errors:**
+   ```bash
+   kubectl logs -n eclipse-che deployment/che-server | grep TokenReview
+   ```
+
+3. **Verify RBAC permissions:**
+   The Che service account needs permission to create TokenReview objects.
+   
+4. **Fallback to gap-auth (testing):**
    ```bash
    curl -H 'gap-auth: kubeadmin' ...
    ```
