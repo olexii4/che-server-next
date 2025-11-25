@@ -139,7 +139,7 @@ async function start() {
       },
     );
 
-    // Register route modules with /api prefix (matches Java implementation)
+    // Register route modules (gateway already routes /api to this service)
     await fastify.register(
       async apiInstance => {
         // Root API endpoint - returns API info (no auth required for CORS preflight, hidden from Swagger)
@@ -201,7 +201,6 @@ async function start() {
         await registerWebSocketRoutes(apiInstance);
         await registerSystemRoutes(apiInstance);
       },
-      { prefix: '/api' },
     );
 
     // Health check endpoints for Kubernetes (hidden from Swagger)
