@@ -30,7 +30,7 @@ export async function registerClusterInfoRoutes(fastify: FastifyInstance): Promi
    * such as links to the cluster console.
    */
   fastify.get(
-    '/api/cluster-info',
+    '/cluster-info',
     {
       schema: {
         tags: ['cluster-info'],

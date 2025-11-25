@@ -30,7 +30,7 @@ export async function registerClusterConfigRoutes(fastify: FastifyInstance): Pro
    * such as workspace limits, dashboard warnings, and the current cluster architecture.
    */
   fastify.get(
-    '/api/cluster-config',
+    '/cluster-config',
     {
       schema: {
         tags: ['cluster-config'],

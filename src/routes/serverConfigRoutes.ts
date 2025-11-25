@@ -33,7 +33,7 @@ export async function registerServerConfigRoutes(fastify: FastifyInstance): Prom
    * devfile registries, and various timeout settings.
    */
   fastify.get(
-    '/api/server-config',
+    '/server-config',
     {
       schema: {
         tags: ['server-config'],
