@@ -171,7 +171,7 @@ export class WebSocketManager {
     const watchPath = `/apis/workspace.devfile.io/v1alpha2/namespaces/${namespace}/devworkspaces`;
 
     try {
-      await watch.watch(
+      const watchRequest = watch.watch(
         watchPath,
         {},
         (phase: string, obj: any) => {
@@ -193,8 +193,14 @@ export class WebSocketManager {
             this.sendError(connection, 'devWorkspace', 'Watch connection closed');
           }
         },
-        abort.signal,
       );
+
+      // Handle abort signal
+      abort.signal.addEventListener('abort', () => {
+        if (watchRequest && typeof (watchRequest as any).abort === 'function') {
+          (watchRequest as any).abort();
+        }
+      });
     } catch (error) {
       logger.error({ error, namespace }, 'Failed to start devWorkspace watch');
       throw error;
@@ -216,7 +222,7 @@ export class WebSocketManager {
     const watchPath = `/api/v1/namespaces/${namespace}/pods`;
 
     try {
-      await watch.watch(
+      const watchRequest = watch.watch(
         watchPath,
         {},
         (phase: string, obj: any) => {
@@ -238,8 +244,14 @@ export class WebSocketManager {
             this.sendError(connection, 'pod', 'Watch connection closed');
           }
         },
-        abort.signal,
       );
+
+      // Handle abort signal
+      abort.signal.addEventListener('abort', () => {
+        if (watchRequest && typeof (watchRequest as any).abort === 'function') {
+          (watchRequest as any).abort();
+        }
+      });
     } catch (error) {
       logger.error({ error, namespace }, 'Failed to start pod watch');
       throw error;
@@ -261,7 +273,7 @@ export class WebSocketManager {
     const watchPath = `/api/v1/namespaces/${namespace}/events`;
 
     try {
-      await watch.watch(
+      const watchRequest = watch.watch(
         watchPath,
         {},
         (phase: string, obj: any) => {
@@ -279,12 +291,18 @@ export class WebSocketManager {
         },
         (err: any) => {
           if (err && !abort.signal.aborted) {
-            logger.error({ error: err, namespace }, 'Event watch error');
+            logger.error({ error, err, namespace }, 'Event watch error');
             this.sendError(connection, 'event', 'Watch connection closed');
           }
         },
-        abort.signal,
       );
+
+      // Handle abort signal
+      abort.signal.addEventListener('abort', () => {
+        if (watchRequest && typeof (watchRequest as any).abort === 'function') {
+          (watchRequest as any).abort();
+        }
+      });
     } catch (error) {
       logger.error({ error, namespace }, 'Failed to start event watch');
       throw error;
