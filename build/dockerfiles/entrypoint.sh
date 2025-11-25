@@ -12,7 +12,18 @@
 
 set -e
 
-echo 'Starting Che Server...'
+echo "╔════════════════════════════════════════════════════════════════════╗"
+echo "║         Eclipse Che Server Starting                               ║"
+echo "╠════════════════════════════════════════════════════════════════════╣"
+
+# Display version information if available
+if [ -f "${CHE_HOME:-/home/user/che-server}/dist/version.txt" ]; then
+  cat "${CHE_HOME:-/home/user/che-server}/dist/version.txt"
+else
+  echo "Version information not available"
+fi
+
+echo "╠════════════════════════════════════════════════════════════════════╣"
 
 # Set default values
 # Use CHE_PORT if available (set by Che Operator), otherwise default to 8080
@@ -72,12 +83,16 @@ fi
 cd "${CHE_HOME}"
 
 # Start the server
-echo "Starting server on ${BIND_ADDRESS}:${PORT} in ${NODE_ENV} mode"
+echo "║ Configuration:                                                     ║"
+echo "║ • Server: ${BIND_ADDRESS}:${PORT} (${NODE_ENV} mode)              ║"
 if [ -n "${CHE_HOST}" ]; then
-  echo "External hostname: ${CHE_HOST}"
+  echo "║ • External hostname: ${CHE_HOST}                                   ║"
 fi
 if [ -n "${CHE_API}" ]; then
-  echo "API endpoint: ${CHE_API}"
+  echo "║ • API endpoint: ${CHE_API}                                         ║"
 fi
+echo "╚════════════════════════════════════════════════════════════════════╝"
+echo ""
+
 exec node --no-deprecation dist/index.js
 
