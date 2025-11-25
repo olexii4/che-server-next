@@ -12,6 +12,7 @@
 
 import Fastify, { FastifyInstance } from 'fastify';
 import fastifyCors from '@fastify/cors';
+import fastifyWebsocket from '@fastify/websocket';
 import dotenv from 'dotenv';
 import { authenticate, requireAuth } from './middleware/auth';
 import { registerNamespaceRoutes } from './routes/namespaceRoutes';
@@ -36,6 +37,8 @@ import { registerGitConfigRoutes } from './routes/gitConfigRoutes';
 import { registerDockerConfigRoutes } from './routes/dockerConfigRoutes';
 import { registerWorkspacePreferencesRoutes } from './routes/workspacePreferencesRoutes';
 import { registerGettingStartedSampleRoutes } from './routes/gettingStartedSampleRoutes';
+import { registerAirGapSampleRoutes } from './routes/airgapSampleRoutes';
+import { registerWebSocketRoutes } from './routes/websocketRoutes';
 import { registerSystemRoutes } from './routes/systemRoutes';
 import { setupSwagger } from './config/swagger';
 import { logger } from './utils/logger';
@@ -99,6 +102,9 @@ async function start() {
     // Register authentication hooks as decorators
     fastify.decorate('authenticate', authenticate);
     fastify.decorate('requireAuth', requireAuth);
+
+    // Register WebSocket support
+    await fastify.register(fastifyWebsocket);
 
     // Setup Swagger/OpenAPI documentation
     await setupSwagger(fastify);
@@ -190,6 +196,8 @@ async function start() {
         await registerDockerConfigRoutes(apiInstance);
         await registerWorkspacePreferencesRoutes(apiInstance);
         await registerGettingStartedSampleRoutes(apiInstance);
+        await registerAirGapSampleRoutes(apiInstance);
+        await registerWebSocketRoutes(apiInstance);
         await registerSystemRoutes(apiInstance);
       },
       { prefix: '/api' },
