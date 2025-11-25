@@ -203,7 +203,8 @@ export class WebSocketManager {
       });
     } catch (error) {
       logger.error({ error, namespace }, 'Failed to start devWorkspace watch');
-      throw error;
+      // Send error to client but don't throw - permission errors shouldn't crash the server
+      this.sendError(connection, 'devWorkspace', `Failed to start watch: ${error}`);
     }
   }
 
@@ -254,7 +255,8 @@ export class WebSocketManager {
       });
     } catch (error) {
       logger.error({ error, namespace }, 'Failed to start pod watch');
-      throw error;
+      // Send error to client but don't throw - permission errors shouldn't crash the server
+      this.sendError(connection, 'pod', `Failed to start watch: ${error}`);
     }
   }
 
@@ -305,7 +307,8 @@ export class WebSocketManager {
       });
     } catch (error) {
       logger.error({ error, namespace }, 'Failed to start event watch');
-      throw error;
+      // Send error to client but don't throw - permission errors shouldn't crash the server
+      this.sendError(connection, 'event', `Failed to start watch: ${error}`);
     }
   }
 
@@ -357,7 +360,8 @@ export class WebSocketManager {
       }
     } catch (error) {
       logger.error({ error, namespace, podName }, 'Failed to start log stream');
-      throw error;
+      // Send error to client but don't throw - permission errors shouldn't crash the server
+      this.sendError(connection, 'logs', `Failed to start log stream: ${error}`);
     }
   }
 
