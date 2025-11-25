@@ -148,6 +148,7 @@ export interface ServerConfig {
   pluginRegistryInternalURL?: string;
   allowedSourceUrls?: string[];
   dashboardLogo?: string;
+  dashboardWarning?: string;
   networking?: NetworkingConfig;
   editorsVisibility?: EditorsVisibilityConfig;
 }

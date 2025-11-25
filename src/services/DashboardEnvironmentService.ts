@@ -12,7 +12,8 @@
 
 import * as k8s from '@kubernetes/client-node';
 
-import { getKubeConfig, getServiceAccountToken } from '../helpers/getKubernetesClient';
+import { getKubeConfig } from '../helpers/getKubernetesClient';
+import { getServiceAccountToken } from '../helpers/getServiceAccountToken';
 import { logger } from '../utils/logger';
 
 /**
