@@ -13,6 +13,7 @@
 import { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 
 import { ServerConfig } from '../models/ClusterModels';
+import { DashboardEnvironmentService } from '../services/DashboardEnvironmentService';
 
 /**
  * Register server config routes
@@ -113,14 +114,26 @@ export async function registerServerConfigRoutes(fastify: FastifyInstance): Prom
  * Build server config from environment variables
  */
 function buildServerConfig(): ServerConfig {
+  // Get dashboard environment service for backward compatibility
+  const dashboardEnv = DashboardEnvironmentService.getInstance();
+
   const cheNamespace = process.env.CHE_NAMESPACE || 'eclipse-che';
   const pluginRegistryInternalURL = process.env.CHE_WORKSPACE_PLUGIN_REGISTRY_INTERNAL_URL || '';
   const pluginRegistryURL = process.env.CHE_WORKSPACE_PLUGIN_REGISTRY_URL || '';
 
-  // Parse editor and plugins
-  const editor = process.env.CHE_DEFAULT_EDITOR || undefined;
+  // Parse editor and plugins - use dashboard environment service for backward compatibility
+  const editor =
+    dashboardEnv.getDefaultEditor() ||
+    process.env.CHE_DEFAULT_EDITOR ||
+    undefined;
   const pluginsStr = process.env.CHE_DEFAULT_PLUGINS || '[]';
-  const componentsStr = process.env.CHE_DEFAULT_COMPONENTS || '[]';
+
+  // Get components from dashboard environment service (backward compatibility)
+  const dashboardComponents = dashboardEnv.getDefaultComponents();
+  const componentsStr =
+    dashboardComponents.length > 0
+      ? JSON.stringify(dashboardComponents)
+      : process.env.CHE_DEFAULT_COMPONENTS || '[]';
 
   let plugins: string[] = [];
   let components: unknown[] = [];
@@ -137,11 +150,11 @@ function buildServerConfig(): ServerConfig {
     components = [];
   }
 
-  // Parse timeouts
+  // Parse timeouts - use dashboard environment service for axios timeout (backward compatibility)
   const inactivityTimeout = parseInt(process.env.CHE_WORKSPACE_INACTIVITY_TIMEOUT || '1800000', 10);
   const runTimeout = parseInt(process.env.CHE_WORKSPACE_RUN_TIMEOUT || '0', 10);
   const startTimeout = parseInt(process.env.CHE_WORKSPACE_START_TIMEOUT || '300000', 10);
-  const axiosRequestTimeout = parseInt(process.env.CHE_AXIOS_REQUEST_TIMEOUT || '10000', 10);
+  const axiosRequestTimeout = dashboardEnv.getAxiosRequestTimeout();
 
   // Parse devfile registry
   const disableInternalRegistry = process.env.CHE_DISABLE_INTERNAL_REGISTRY === 'true' || false;
@@ -167,8 +180,10 @@ function buildServerConfig(): ServerConfig {
   // Dashboard logo
   const dashboardLogo = process.env.CHE_DASHBOARD_LOGO || undefined;
 
-  // Container build/run
-  const containerBuildEnabled = process.env.CHE_CONTAINER_BUILD_ENABLED === 'true';
+  // Container build/run - use dashboard environment service for backward compatibility
+  const disableContainerBuild = dashboardEnv.getDisableContainerBuildCapabilities();
+  const containerBuildEnabled =
+    process.env.CHE_CONTAINER_BUILD_ENABLED === 'true' || !disableContainerBuild;
   const containerRunEnabled = process.env.CHE_CONTAINER_RUN_ENABLED === 'true';
 
   const containerBuildConfigStr = process.env.CHE_CONTAINER_BUILD_CONFIGURATION || '{}';
@@ -206,16 +221,9 @@ function buildServerConfig(): ServerConfig {
     denyUsers.length > 0 ||
     denyGroups.length > 0;
 
-  // Editors visibility
-  const showDeprecated = process.env.CHE_SHOW_DEPRECATED_EDITORS === 'true';
-  const hideByIdStr = process.env.CHE_HIDE_EDITORS_BY_ID || '[]';
-
-  let hideById: string[] = [];
-  try {
-    hideById = JSON.parse(hideByIdStr);
-  } catch (e) {
-    hideById = [];
-  }
+  // Editors visibility - use dashboard environment service for backward compatibility
+  const showDeprecated = dashboardEnv.getShowDeprecatedEditors();
+  const hideById = dashboardEnv.getHideEditorsById();
 
   // Build server config
   const serverConfig: ServerConfig = {
@@ -239,7 +247,10 @@ function buildServerConfig(): ServerConfig {
       autoProvision,
     },
     pluginRegistry: {
-      openVSXURL: process.env.CHE_PLUGIN_REGISTRY_OPENVSX_URL || undefined,
+      openVSXURL:
+        dashboardEnv.getOpenVSXURL() ||
+        process.env.CHE_PLUGIN_REGISTRY_OPENVSX_URL ||
+        undefined,
     },
     cheNamespace,
     pluginRegistryURL: pluginRegistryURL || undefined,
@@ -264,6 +275,12 @@ function buildServerConfig(): ServerConfig {
 
   if (dashboardLogo) {
     serverConfig.dashboardLogo = dashboardLogo;
+  }
+
+  // Add dashboard warning message (backward compatibility)
+  const dashboardWarning = dashboardEnv.getDashboardHeaderMessageText();
+  if (dashboardWarning) {
+    serverConfig.dashboardWarning = dashboardWarning;
   }
 
   if (hasAdvancedAuth) {

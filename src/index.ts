@@ -43,6 +43,7 @@ import { registerSystemRoutes } from './routes/systemRoutes';
 import { setupSwagger } from './config/swagger';
 import { logger } from './utils/logger';
 import { exec } from 'child_process';
+import { DashboardEnvironmentService } from './services/DashboardEnvironmentService';
 
 // Load environment variables
 dotenv.config();
@@ -234,6 +235,12 @@ async function start() {
         message: `Route ${request.method} ${request.url} not found`,
       });
     });
+
+    // Initialize dashboard environment service (backward compatibility)
+    logger.info('Initializing dashboard environment service...');
+    const dashboardEnvService = DashboardEnvironmentService.getInstance();
+    await dashboardEnvService.initialize();
+    logger.info('Dashboard environment service initialized');
 
     // Start the server
     await fastify.listen({ port: PORT, host: HOST });
