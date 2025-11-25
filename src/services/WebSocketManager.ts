@@ -291,7 +291,7 @@ export class WebSocketManager {
         },
         (err: any) => {
           if (err && !abort.signal.aborted) {
-            logger.error({ error, err, namespace }, 'Event watch error');
+            logger.error({ error: err, namespace }, 'Event watch error');
             this.sendError(connection, 'event', 'Watch connection closed');
           }
         },
