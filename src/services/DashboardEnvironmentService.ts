@@ -10,14 +10,12 @@
  *   Red Hat, Inc. - initial API and implementation
  */
 
-import * as k8s from '@kubernetes/client-node';
+import axios from 'axios';
 
-import { getKubeConfig } from '../helpers/getKubernetesClient';
-import { getServiceAccountToken } from '../helpers/getServiceAccountToken';
 import { logger } from '../utils/logger';
 
 /**
- * Environment variables that need to be read from the dashboard pod
+ * Environment variables that can be read from the dashboard
  */
 export interface DashboardEnvironmentVars {
   CHE_SHOW_DEPRECATED_EDITORS?: string;
@@ -26,28 +24,36 @@ export interface DashboardEnvironmentVars {
   CHE_DEFAULT_SPEC_DEVENVIRONMENTS_DEFAULTEDITOR?: string;
   CHE_DEFAULT_SPEC_DEVENVIRONMENTS_DEFAULTCOMPONENTS?: string;
   CHE_DEFAULT_SPEC_COMPONENTS_PLUGINREGISTRY_OPENVSXURL?: string;
-  CHE_DEFAULT_SPEC_COMPONENTS_DASHBOARD_HEADERMESSAGE_TEXT?: string;
-  CHE_DASHBOARD_AXIOS_REQUEST_TIMEOUT?: string;
 }
 
 /**
- * Service for reading dashboard environment variables on startup
+ * Service for reading dashboard environment variables at startup
  *
- * This service reads environment variables from the che-dashboard deployment
- * by inspecting the CheCluster custom resource. These variables are used to
- * maintain compatibility with the original che-dashboard backend API.
+ * This service reads environment variables from the che-dashboard's exported
+ * JSON file at /dashboard/dashboard-env.json. The dashboard exports these
+ * variables at startup for backward compatibility.
+ *
+ * This approach is simpler and more efficient than querying the Kubernetes API
+ * and doesn't require additional RBAC permissions.
  */
 export class DashboardEnvironmentService {
-  private static instance: DashboardEnvironmentService | null = null;
+  private static instance: DashboardEnvironmentService;
   private envVars: DashboardEnvironmentVars = {};
   private initialized = false;
+  private dashboardUrl: string;
 
-  private constructor() {}
+  private constructor() {
+    // Use internal dashboard service URL
+    this.dashboardUrl =
+      process.env.CHE_DASHBOARD_INTERNAL_URL ||
+      process.env.CHE_DASHBOARD_URL ||
+      'http://che-dashboard.eclipse-che:8080';
+  }
 
   /**
-   * Get the singleton instance
+   * Get singleton instance
    */
-  static getInstance(): DashboardEnvironmentService {
+  public static getInstance(): DashboardEnvironmentService {
     if (!DashboardEnvironmentService.instance) {
       DashboardEnvironmentService.instance = new DashboardEnvironmentService();
     }
@@ -55,132 +61,55 @@ export class DashboardEnvironmentService {
   }
 
   /**
-   * Initialize the service by reading environment variables from the dashboard deployment
+   * Initializes the service by fetching environment variables from dashboard's JSON file
+   * This method should be called once at application startup
    */
-  async initialize(): Promise<void> {
+  public async initialize(): Promise<void> {
     if (this.initialized) {
       logger.info('DashboardEnvironmentService already initialized');
       return;
     }
 
     try {
-      const token = getServiceAccountToken();
-      if (!token) {
-        logger.warn(
-          'No service account token available - skipping dashboard environment initialization (local run mode)',
-        );
-        this.loadFromProcessEnv();
-        this.initialized = true;
-        return;
+      const url = `${this.dashboardUrl}/dashboard/dashboard-env.json`;
+      logger.info(`Fetching dashboard environment variables from ${url}`);
+
+      const response = await axios.get<DashboardEnvironmentVars>(url, {
+        timeout: 5000,
+        validateStatus: (status) => status === 200,
+      });
+
+      this.envVars = response.data;
+
+      // Filter out empty values and log only the set variables
+      const setVars = Object.entries(this.envVars)
+        .filter(([, value]) => value !== undefined && value !== '')
+        .map(([key]) => key);
+
+      if (setVars.length > 0) {
+        logger.info(`Successfully loaded dashboard environment variables: ${setVars.join(', ')}`);
+      } else {
+        logger.info('Dashboard environment variables file loaded (all values empty, using defaults)');
       }
 
-      const kubeConfig = getKubeConfig(token);
-      await this.loadFromCheCluster(kubeConfig);
       this.initialized = true;
-
-      logger.info(
-        { envVars: Object.keys(this.envVars) },
-        'Dashboard environment variables loaded successfully',
-      );
     } catch (error) {
-      logger.error({ error }, 'Failed to load dashboard environment variables');
-      // Fall back to process.env
-      this.loadFromProcessEnv();
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      logger.warn(
+        { error: errorMessage, url: this.dashboardUrl },
+        'Failed to fetch dashboard environment variables from JSON file. Proceeding with process.env fallback.',
+      );
+      // Don't throw - service should work even without dashboard env vars
       this.initialized = true;
     }
-  }
-
-  /**
-   * Load environment variables from the CheCluster custom resource
-   */
-  private async loadFromCheCluster(kubeConfig: k8s.KubeConfig): Promise<void> {
-    const customObjectsApi = kubeConfig.makeApiClient(k8s.CustomObjectsApi);
-    const namespace = process.env.CHECLUSTER_CR_NAMESPACE || 'eclipse-che';
-
-    try {
-      const response = await customObjectsApi.listNamespacedCustomObject(
-        'org.eclipse.che',
-        'v2',
-        namespace,
-        'checlusters',
-      );
-
-      const cheClusterList = response.body as any;
-      const cheCluster = cheClusterList.items?.[0];
-
-      if (!cheCluster) {
-        logger.warn({ namespace }, 'No CheCluster found in namespace');
-        this.loadFromProcessEnv();
-        return;
-      }
-
-      // Extract environment variables from dashboard container spec
-      const containers = cheCluster.spec?.components?.dashboard?.deployment?.containers || [];
-      const dashboardContainer = containers.find(
-        (c: any) => c.name === 'che-dashboard' || c.env !== undefined,
-      );
-
-      if (dashboardContainer && dashboardContainer.env) {
-        for (const envVar of dashboardContainer.env) {
-          if (this.isRelevantEnvVar(envVar.name)) {
-            this.envVars[envVar.name as keyof DashboardEnvironmentVars] = envVar.value;
-          }
-        }
-      }
-
-      // Fall back to process.env for any missing variables
-      this.loadFromProcessEnv(true);
-    } catch (error) {
-      logger.error({ error, namespace }, 'Error loading CheCluster custom resource');
-      throw error;
-    }
-  }
-
-  /**
-   * Load environment variables from process.env
-   */
-  private loadFromProcessEnv(onlyMissing = false): void {
-    const relevantVars: Array<keyof DashboardEnvironmentVars> = [
-      'CHE_SHOW_DEPRECATED_EDITORS',
-      'CHE_HIDE_EDITORS_BY_ID',
-      'CHE_DEFAULT_SPEC_DEVENVIRONMENTS_DISABLECONTAINERBUILDCAPABILITIES',
-      'CHE_DEFAULT_SPEC_DEVENVIRONMENTS_DEFAULTEDITOR',
-      'CHE_DEFAULT_SPEC_DEVENVIRONMENTS_DEFAULTCOMPONENTS',
-      'CHE_DEFAULT_SPEC_COMPONENTS_PLUGINREGISTRY_OPENVSXURL',
-      'CHE_DEFAULT_SPEC_COMPONENTS_DASHBOARD_HEADERMESSAGE_TEXT',
-      'CHE_DASHBOARD_AXIOS_REQUEST_TIMEOUT',
-    ];
-
-    for (const varName of relevantVars) {
-      if (onlyMissing && this.envVars[varName] !== undefined) {
-        continue;
-      }
-
-      if (process.env[varName]) {
-        this.envVars[varName] = process.env[varName];
-      }
-    }
-  }
-
-  /**
-   * Check if an environment variable name is relevant
-   */
-  private isRelevantEnvVar(name: string): boolean {
-    return (
-      name.startsWith('CHE_') &&
-      (name.includes('EDITOR') ||
-        name.includes('COMPONENT') ||
-        name.includes('DEVENVIRONMENT') ||
-        name.includes('DASHBOARD') ||
-        name.includes('PLUGINREGISTRY'))
-    );
   }
 
   /**
    * Get a specific environment variable value
+   * Falls back to process.env if not found in dashboard config
    */
   getEnvVar(name: keyof DashboardEnvironmentVars): string | undefined {
-    return this.envVars[name];
+    return this.envVars[name] || process.env[name];
   }
 
   /**
@@ -250,24 +179,4 @@ export class DashboardEnvironmentService {
   getOpenVSXURL(): string | undefined {
     return this.getEnvVar('CHE_DEFAULT_SPEC_COMPONENTS_PLUGINREGISTRY_OPENVSXURL');
   }
-
-  /**
-   * Get dashboard header message text
-   */
-  getDashboardHeaderMessageText(): string | undefined {
-    return this.getEnvVar('CHE_DEFAULT_SPEC_COMPONENTS_DASHBOARD_HEADERMESSAGE_TEXT');
-  }
-
-  /**
-   * Get axios request timeout in milliseconds
-   */
-  getAxiosRequestTimeout(): number {
-    const value = this.getEnvVar('CHE_DASHBOARD_AXIOS_REQUEST_TIMEOUT');
-    if (!value) {
-      return 60000; // default 60 seconds
-    }
-    const timeout = parseInt(value, 10);
-    return isNaN(timeout) ? 60000 : timeout;
-  }
 }
-

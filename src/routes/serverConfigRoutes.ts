@@ -150,11 +150,11 @@ function buildServerConfig(): ServerConfig {
     components = [];
   }
 
-  // Parse timeouts - use dashboard environment service for axios timeout (backward compatibility)
+  // Parse timeouts
   const inactivityTimeout = parseInt(process.env.CHE_WORKSPACE_INACTIVITY_TIMEOUT || '1800000', 10);
   const runTimeout = parseInt(process.env.CHE_WORKSPACE_RUN_TIMEOUT || '0', 10);
   const startTimeout = parseInt(process.env.CHE_WORKSPACE_START_TIMEOUT || '300000', 10);
-  const axiosRequestTimeout = dashboardEnv.getAxiosRequestTimeout();
+  const axiosRequestTimeout = parseInt(process.env.CHE_DASHBOARD_AXIOS_REQUEST_TIMEOUT || '60000', 10);
 
   // Parse devfile registry
   const disableInternalRegistry = process.env.CHE_DISABLE_INTERNAL_REGISTRY === 'true' || false;
@@ -277,8 +277,8 @@ function buildServerConfig(): ServerConfig {
     serverConfig.dashboardLogo = dashboardLogo;
   }
 
-  // Add dashboard warning message (backward compatibility)
-  const dashboardWarning = dashboardEnv.getDashboardHeaderMessageText();
+  // Add dashboard warning message from ClusterConfig (not from dashboard env)
+  const dashboardWarning = process.env.CHE_DASHBOARD_WARNING;
   if (dashboardWarning) {
     serverConfig.dashboardWarning = dashboardWarning;
   }
