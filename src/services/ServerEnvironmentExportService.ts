@@ -50,9 +50,9 @@ export class ServerEnvironmentExportService {
   private exportPath: string;
 
   private constructor() {
-    // Export to server's dist directory so it can be served via HTTP
-    // Default: /home/user/che-server/dist/server-env.json
-    const defaultPath = path.join(process.cwd(), 'dist', 'server-env.json');
+    // Export to /tmp directory which is writable in Docker containers
+    // Default: /tmp/server-env.json
+    const defaultPath = '/tmp/server-env.json';
     this.exportPath = process.env.CHE_SERVER_ENV_EXPORT_PATH || defaultPath;
   }
 
