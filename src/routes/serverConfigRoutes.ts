@@ -13,6 +13,7 @@
 import { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 
 import { ServerConfig } from '../models/ClusterModels';
+import { DashboardEnvironmentService } from '../services/DashboardEnvironmentService';
 
 /**
  * Register server config routes
@@ -110,17 +111,31 @@ export async function registerServerConfigRoutes(fastify: FastifyInstance): Prom
 }
 
 /**
- * Build server config from environment variables
+ * Build server config from environment variables and dashboard environment service
  */
 function buildServerConfig(): ServerConfig {
   const cheNamespace = process.env.CHE_NAMESPACE || 'eclipse-che';
   const pluginRegistryInternalURL = process.env.CHE_WORKSPACE_PLUGIN_REGISTRY_INTERNAL_URL || '';
   const pluginRegistryURL = process.env.CHE_WORKSPACE_PLUGIN_REGISTRY_URL || '';
 
-  // Parse editor and plugins
-  const editor = process.env.CHE_DEFAULT_EDITOR || undefined;
+  // Get dashboard environment service for backward compatibility
+  const dashboardEnv = DashboardEnvironmentService.getInstance();
+
+  // Parse editor and plugins - prioritize dashboard environment
+  const editor =
+    dashboardEnv.getDefaultEditor() ||
+    process.env.CHE_DEFAULT_EDITOR ||
+    'che-incubator/che-code/insiders'; // Default fallback
+  
   const pluginsStr = process.env.CHE_DEFAULT_PLUGINS || '[]';
-  const componentsStr = process.env.CHE_DEFAULT_COMPONENTS || '[]';
+  
+  // Get components from dashboard environment service (backward compatibility)
+  const dashboardComponents = dashboardEnv.getDefaultComponents();
+  const componentsStr =
+    dashboardComponents.length > 0
+      ? JSON.stringify(dashboardComponents)
+      : process.env.CHE_DEFAULT_COMPONENTS ||
+        '[{"name":"universal-developer-image","container":{"image":"quay.io/devfile/universal-developer-image:ubi9-latest"}}]'; // Default fallback
 
   let plugins: string[] = [];
   let components: unknown[] = [];
@@ -138,10 +153,10 @@ function buildServerConfig(): ServerConfig {
   }
 
   // Parse timeouts
-  const inactivityTimeout = parseInt(process.env.CHE_WORKSPACE_INACTIVITY_TIMEOUT || '1800000', 10);
-  const runTimeout = parseInt(process.env.CHE_WORKSPACE_RUN_TIMEOUT || '0', 10);
-  const startTimeout = parseInt(process.env.CHE_WORKSPACE_START_TIMEOUT || '300000', 10);
-  const axiosRequestTimeout = parseInt(process.env.CHE_AXIOS_REQUEST_TIMEOUT || '10000', 10);
+  const inactivityTimeout = parseInt(process.env.CHE_WORKSPACE_INACTIVITY_TIMEOUT || '10800000', 10); // 3 hours default
+  const runTimeout = parseInt(process.env.CHE_WORKSPACE_RUN_TIMEOUT || '86400000', 10); // 24 hours default
+  const startTimeout = parseInt(process.env.CHE_WORKSPACE_START_TIMEOUT || '300000', 10); // 5 minutes default
+  const axiosRequestTimeout = parseInt(process.env.CHE_AXIOS_REQUEST_TIMEOUT || '30000', 10); // 30 seconds default
 
   // Parse devfile registry
   const disableInternalRegistry = process.env.CHE_DISABLE_INTERNAL_REGISTRY === 'true' || false;
@@ -155,7 +170,7 @@ function buildServerConfig(): ServerConfig {
   }
 
   // Parse PVC strategy
-  const pvcStrategy = process.env.CHE_PVC_STRATEGY || 'common';
+  const pvcStrategy = process.env.CHE_PVC_STRATEGY || 'per-workspace';
 
   // Parse auto provision
   const autoProvision = process.env.CHE_AUTO_PROVISION !== 'false';
