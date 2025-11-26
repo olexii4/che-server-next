@@ -73,9 +73,13 @@ export class WorkspacePreferencesService {
 
       return preferences;
     } catch (error: any) {
-      // If ConfigMap doesn't exist, return empty preferences
+      // If ConfigMap doesn't exist, return empty preferences with proper structure
       if (error.statusCode === 404 || error.response?.statusCode === 404) {
-        return {};
+        logger.info({ namespace }, 'Workspace preferences ConfigMap not found, returning defaults');
+        return {
+          'skip-authorisation': [],
+          'trusted-sources': [],
+        };
       }
       logger.error({ error, namespace }, 'Error getting workspace preferences');
       throw error;
