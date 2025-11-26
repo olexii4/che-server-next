@@ -43,7 +43,6 @@ import { setupSwagger } from './config/swagger';
 import { logger } from './utils/logger';
 import { exec } from 'child_process';
 import websocketPlugin from '@fastify/websocket';
-import { ServerEnvironmentExportService } from './services/ServerEnvironmentExportService';
 
 // Load environment variables
 dotenv.config();
@@ -107,10 +106,6 @@ async function start() {
     // Register WebSocket plugin
     await fastify.register(websocketPlugin);
 
-    // Export server environment variables for dashboard
-    const serverEnvExport = ServerEnvironmentExportService.getInstance();
-    await serverEnvExport.initialize();
-
     // Setup Swagger/OpenAPI documentation
     await setupSwagger(fastify);
 
@@ -140,52 +135,6 @@ async function start() {
           status: 'ok',
           timestamp: new Date().toISOString(),
         });
-      },
-    );
-
-    // Server environment variables endpoint (hidden from Swagger)
-    // This provides environment variables that the dashboard may need
-    fastify.get(
-      '/server-env.json',
-      {
-        schema: {
-          hide: true,
-          tags: ['system'],
-          summary: 'Get server environment variables',
-          description: 'Returns environment variables exported by the server for dashboard consumption',
-          response: {
-            200: {
-              description: 'Server environment variables',
-              type: 'object',
-              additionalProperties: true,
-            },
-            404: {
-              description: 'Server environment file not found',
-              type: 'object',
-              properties: {
-                error: { type: 'string' },
-              },
-            },
-          },
-        },
-      },
-      async (request, reply) => {
-        try {
-          const fs = await import('fs');
-          const serverEnvExport = ServerEnvironmentExportService.getInstance();
-          const exportPath = serverEnvExport.getExportPath();
-          
-          if (fs.existsSync(exportPath)) {
-            const content = fs.readFileSync(exportPath, 'utf8');
-            const envVars = JSON.parse(content);
-            return reply.code(200).send(envVars);
-          } else {
-            return reply.code(404).send({ error: 'Server environment file not found' });
-          }
-        } catch (error) {
-          logger.error({ error }, 'Error serving server environment file');
-          return reply.code(500).send({ error: 'Internal Server Error' });
-        }
       },
     );
 
