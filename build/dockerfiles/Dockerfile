@@ -10,11 +10,7 @@
 
 FROM docker.io/node:20.18.0-alpine3.20 AS builder
 
-RUN apk add --no-cache python3 make g++ git
-
-# Capture git commit hash and build info
-ARG GIT_COMMIT_SHA="unknown"
-ARG BUILD_DATE="unknown"
+RUN apk add --no-cache python3 make g++
 
 # Copy Yarn configuration
 COPY .yarn/releases /che-server/.yarn/releases/
@@ -32,21 +28,8 @@ COPY webpack.config.prod.js /che-server/
 COPY webpack.config.dev.js /che-server/
 RUN yarn build
 
-# Create version file
-RUN echo "Che Server Version Information" > /che-server/dist/version.txt && \
-    echo "==============================" >> /che-server/dist/version.txt && \
-    echo "Git Commit: ${GIT_COMMIT_SHA}" >> /che-server/dist/version.txt && \
-    echo "Build Date: ${BUILD_DATE}" >> /che-server/dist/version.txt && \
-    echo "Node Version: $(node --version)" >> /che-server/dist/version.txt
-
 # Production image
 FROM docker.io/node:20.18.0-alpine3.20
-
-# Pass build args to runtime
-ARG GIT_COMMIT_SHA="unknown"
-ARG BUILD_DATE="unknown"
-ENV GIT_COMMIT_SHA=${GIT_COMMIT_SHA}
-ENV BUILD_DATE=${BUILD_DATE}
 
 RUN apk add --no-cache curl shadow
 

@@ -41,15 +41,9 @@ IMAGE_NAME="${1:-che-server}"
 IMAGE_TAG="${2:-latest}"
 PLATFORMS="${3:-linux/amd64,linux/arm64}"
 
-# Capture git commit hash and build date
-GIT_COMMIT_SHA=$(git rev-parse --short HEAD 2>/dev/null || echo "unknown")
-BUILD_DATE=$(date -u +'%Y-%m-%dT%H:%M:%SZ')
-
 echo "Container engine: $CONTAINER_ENGINE"
 echo "Building ${IMAGE_NAME}:${IMAGE_TAG}"
 echo "Platforms: ${PLATFORMS}"
-echo "Git commit: ${GIT_COMMIT_SHA}"
-echo "Build date: ${BUILD_DATE}"
 echo "Using Dockerfile: build/dockerfiles/Dockerfile"
 echo ""
 
@@ -62,8 +56,6 @@ if [ "$CONTAINER_ENGINE" = "podman" ]; then
     # Podman supports multiplatform builds natively
     podman build \
       --platform "${PLATFORMS}" \
-      --build-arg GIT_COMMIT_SHA="${GIT_COMMIT_SHA}" \
-      --build-arg BUILD_DATE="${BUILD_DATE}" \
       -f build/dockerfiles/Dockerfile \
       -t "${IMAGE_NAME}:${IMAGE_TAG}" \
       --manifest "${IMAGE_NAME}:${IMAGE_TAG}" \
@@ -95,8 +87,6 @@ elif [ "$CONTAINER_ENGINE" = "docker" ]; then
     # Build and push the multiplatform Docker image
     docker buildx build \
       --platform "${PLATFORMS}" \
-      --build-arg GIT_COMMIT_SHA="${GIT_COMMIT_SHA}" \
-      --build-arg BUILD_DATE="${BUILD_DATE}" \
       -f build/dockerfiles/Dockerfile \
       -t "${IMAGE_NAME}:${IMAGE_TAG}" \
       --push \

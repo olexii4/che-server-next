@@ -43,7 +43,10 @@ export async function registerEditorsRoutes(fastify: FastifyInstance): Promise<v
           200: {
             description: 'List of editors',
             type: 'array',
-            items: { type: 'object' },
+            items: {
+              type: 'object',
+              additionalProperties: true, // Allow all editor properties
+            },
           },
           500: {
             description: 'Internal Server Error',

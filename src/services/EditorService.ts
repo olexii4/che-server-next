@@ -79,7 +79,44 @@ export class EditorService {
 
         for (const key in cm.data) {
           try {
-            const editor = yaml.load(cm.data[key]) as EditorDevfile;
+            const editorYaml = cm.data[key];
+            if (!editorYaml || typeof editorYaml !== 'string') {
+              logger.warn({ configMapName: cm.metadata?.name, key }, 'Empty or invalid editor YAML');
+              continue;
+            }
+            
+            const editor = yaml.load(editorYaml) as EditorDevfile;
+            
+            // Validate that the editor has required fields
+            if (!editor || typeof editor !== 'object') {
+              logger.warn(
+                { configMapName: cm.metadata?.name, key, editorType: typeof editor },
+                'Parsed editor is not an object',
+              );
+              continue;
+            }
+            
+            if (!editor.metadata) {
+              logger.warn(
+                { configMapName: cm.metadata?.name, key, editorKeys: Object.keys(editor).slice(0, 5) },
+                'Parsed editor is missing metadata field',
+              );
+              continue;
+            }
+            
+            // Log first successful editor for debugging
+            if (editors.length === 0) {
+              logger.info(
+                { 
+                  name: editor.metadata.name,
+                  displayName: editor.metadata.displayName,
+                  hasSchemaVersion: !!editor.schemaVersion,
+                  componentCount: editor.components?.length || 0
+                },
+                'First editor parsed successfully'
+              );
+            }
+            
             editors.push(editor);
           } catch (error) {
             logger.error(
@@ -90,6 +127,7 @@ export class EditorService {
         }
       }
 
+      logger.info({ editorCount: editors.length }, 'Successfully loaded editors');
       return editors;
     } catch (error) {
       logger.error({ error, namespace: this.cheNamespace }, 'Error listing editors');
