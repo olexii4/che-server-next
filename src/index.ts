@@ -38,9 +38,11 @@ import { registerWorkspacePreferencesRoutes } from './routes/workspacePreference
 import { registerGettingStartedSampleRoutes } from './routes/gettingStartedSampleRoutes';
 import { registerAirGapSampleRoutes } from './routes/airgapSampleRoutes';
 import { registerSystemRoutes } from './routes/systemRoutes';
+import { registerWebSocketRoutes } from './routes/websocketRoutes';
 import { setupSwagger } from './config/swagger';
 import { logger } from './utils/logger';
 import { exec } from 'child_process';
+import websocketPlugin from '@fastify/websocket';
 
 // Load environment variables
 dotenv.config();
@@ -100,6 +102,9 @@ async function start() {
     // Register authentication hooks as decorators
     fastify.decorate('authenticate', authenticate);
     fastify.decorate('requireAuth', requireAuth);
+
+    // Register WebSocket plugin
+    await fastify.register(websocketPlugin);
 
     // Setup Swagger/OpenAPI documentation
     await setupSwagger(fastify);
@@ -193,6 +198,7 @@ async function start() {
         await registerGettingStartedSampleRoutes(apiInstance);
         await registerAirGapSampleRoutes(apiInstance);
         await registerSystemRoutes(apiInstance);
+        await registerWebSocketRoutes(apiInstance);
       },
       { prefix: '/api' },
     );
