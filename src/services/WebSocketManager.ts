@@ -171,40 +171,56 @@ export class WebSocketManager {
     const watchPath = `/apis/workspace.devfile.io/v1alpha2/namespaces/${namespace}/devworkspaces`;
 
     try {
-      const watchRequest = watch.watch(
+      const watchRequest = await watch.watch(
         watchPath,
         {},
         (phase: string, obj: any) => {
-          if (connection.readyState === WebSocket.OPEN) {
-            connection.send(
-              JSON.stringify({
-                channel: 'devWorkspace',
-                message: {
-                  eventPhase: phase.toUpperCase() as EventPhase,
-                  devWorkspace: obj,
-                },
-              }),
-            );
+          try {
+            if (connection.readyState === WebSocket.OPEN) {
+              connection.send(
+                JSON.stringify({
+                  channel: 'devWorkspace',
+                  message: {
+                    eventPhase: phase.toUpperCase() as EventPhase,
+                    devWorkspace: obj,
+                  },
+                }),
+              );
+            }
+          } catch (err) {
+            logger.error({ error: err }, 'Error in devWorkspace watch handler');
           }
         },
         (err: any) => {
           if (err && !abort.signal.aborted) {
             logger.error({ error: err, namespace }, 'DevWorkspace watch error');
-            this.sendError(connection, 'devWorkspace', 'Watch connection closed');
+            try {
+              this.sendError(connection, 'devWorkspace', 'Watch connection closed');
+            } catch (e) {
+              logger.error({ error: e }, 'Error sending watch error to client');
+            }
           }
         },
       );
 
       // Handle abort signal
       abort.signal.addEventListener('abort', () => {
-        if (watchRequest && typeof (watchRequest as any).abort === 'function') {
-          (watchRequest as any).abort();
+        try {
+          if (watchRequest && typeof (watchRequest as any).abort === 'function') {
+            (watchRequest as any).abort();
+          }
+        } catch (err) {
+          logger.error({ error: err }, 'Error aborting watch');
         }
       });
     } catch (error) {
       logger.error({ error, namespace }, 'Failed to start devWorkspace watch');
       // Send error to client but don't throw - permission errors shouldn't crash the server
-      this.sendError(connection, 'devWorkspace', `Failed to start watch: ${error}`);
+      try {
+        this.sendError(connection, 'devWorkspace', `Failed to start watch: ${error}`);
+      } catch (e) {
+        logger.error({ error: e }, 'Error sending error to client');
+      }
     }
   }
 
@@ -223,40 +239,56 @@ export class WebSocketManager {
     const watchPath = `/api/v1/namespaces/${namespace}/pods`;
 
     try {
-      const watchRequest = watch.watch(
+      const watchRequest = await watch.watch(
         watchPath,
         {},
         (phase: string, obj: any) => {
-          if (connection.readyState === WebSocket.OPEN) {
-            connection.send(
-              JSON.stringify({
-                channel: 'pod',
-                message: {
-                  eventPhase: phase.toUpperCase() as EventPhase,
-                  pod: obj,
-                },
-              }),
-            );
+          try {
+            if (connection.readyState === WebSocket.OPEN) {
+              connection.send(
+                JSON.stringify({
+                  channel: 'pod',
+                  message: {
+                    eventPhase: phase.toUpperCase() as EventPhase,
+                    pod: obj,
+                  },
+                }),
+              );
+            }
+          } catch (err) {
+            logger.error({ error: err }, 'Error in pod watch handler');
           }
         },
         (err: any) => {
           if (err && !abort.signal.aborted) {
             logger.error({ error: err, namespace }, 'Pod watch error');
-            this.sendError(connection, 'pod', 'Watch connection closed');
+            try {
+              this.sendError(connection, 'pod', 'Watch connection closed');
+            } catch (e) {
+              logger.error({ error: e }, 'Error sending watch error to client');
+            }
           }
         },
       );
 
       // Handle abort signal
       abort.signal.addEventListener('abort', () => {
-        if (watchRequest && typeof (watchRequest as any).abort === 'function') {
-          (watchRequest as any).abort();
+        try {
+          if (watchRequest && typeof (watchRequest as any).abort === 'function') {
+            (watchRequest as any).abort();
+          }
+        } catch (err) {
+          logger.error({ error: err }, 'Error aborting watch');
         }
       });
     } catch (error) {
       logger.error({ error, namespace }, 'Failed to start pod watch');
       // Send error to client but don't throw - permission errors shouldn't crash the server
-      this.sendError(connection, 'pod', `Failed to start watch: ${error}`);
+      try {
+        this.sendError(connection, 'pod', `Failed to start watch: ${error}`);
+      } catch (e) {
+        logger.error({ error: e }, 'Error sending error to client');
+      }
     }
   }
 
@@ -275,40 +307,56 @@ export class WebSocketManager {
     const watchPath = `/api/v1/namespaces/${namespace}/events`;
 
     try {
-      const watchRequest = watch.watch(
+      const watchRequest = await watch.watch(
         watchPath,
         {},
         (phase: string, obj: any) => {
-          if (connection.readyState === WebSocket.OPEN) {
-            connection.send(
-              JSON.stringify({
-                channel: 'event',
-                message: {
-                  eventPhase: phase.toUpperCase() as EventPhase,
-                  event: obj,
-                },
-              }),
-            );
+          try {
+            if (connection.readyState === WebSocket.OPEN) {
+              connection.send(
+                JSON.stringify({
+                  channel: 'event',
+                  message: {
+                    eventPhase: phase.toUpperCase() as EventPhase,
+                    event: obj,
+                  },
+                }),
+              );
+            }
+          } catch (err) {
+            logger.error({ error: err }, 'Error in event watch handler');
           }
         },
         (err: any) => {
           if (err && !abort.signal.aborted) {
             logger.error({ error: err, namespace }, 'Event watch error');
-            this.sendError(connection, 'event', 'Watch connection closed');
+            try {
+              this.sendError(connection, 'event', 'Watch connection closed');
+            } catch (e) {
+              logger.error({ error: e }, 'Error sending watch error to client');
+            }
           }
         },
       );
 
       // Handle abort signal
       abort.signal.addEventListener('abort', () => {
-        if (watchRequest && typeof (watchRequest as any).abort === 'function') {
-          (watchRequest as any).abort();
+        try {
+          if (watchRequest && typeof (watchRequest as any).abort === 'function') {
+            (watchRequest as any).abort();
+          }
+        } catch (err) {
+          logger.error({ error: err }, 'Error aborting watch');
         }
       });
     } catch (error) {
       logger.error({ error, namespace }, 'Failed to start event watch');
       // Send error to client but don't throw - permission errors shouldn't crash the server
-      this.sendError(connection, 'event', `Failed to start watch: ${error}`);
+      try {
+        this.sendError(connection, 'event', `Failed to start watch: ${error}`);
+      } catch (e) {
+        logger.error({ error: e }, 'Error sending error to client');
+      }
     }
   }
 
