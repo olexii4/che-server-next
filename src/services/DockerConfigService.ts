@@ -63,8 +63,16 @@ export class DockerConfigService {
       return this.getDockerConfig(response.body);
     } catch (error: any) {
       // If Secret doesn't exist, create it
-      if (error.statusCode === 404 || error.response?.statusCode === 404) {
-        return this.createNamespacedSecret(namespace, dockerCfg);
+      // Note: With RBAC resourceNames, Kubernetes may return 403 instead of 404 for non-existent resources
+      if (error.statusCode === 404 || error.statusCode === 403 || error.response?.statusCode === 404 || error.response?.statusCode === 403) {
+        logger.info({ namespace, secretName: SECRET_NAME }, 'Secret does not exist or permission denied on replace, attempting to create');
+        try {
+          return await this.createNamespacedSecret(namespace, dockerCfg);
+        } catch (createError: any) {
+          // If create also fails with 403, it might be a real permission issue
+          logger.error({ error: createError, namespace }, 'Error creating docker config after update failed');
+          throw createError;
+        }
       }
       logger.error({ error, namespace }, 'Error updating docker config');
       throw error;

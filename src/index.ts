@@ -18,7 +18,6 @@ import { registerNamespaceRoutes } from './routes/namespaceRoutes';
 import { registerFactoryRoutes } from './routes/factoryRoutes';
 import { registerOAuthRoutes } from './routes/oauthRoutes';
 import { registerScmRoutes } from './routes/scmRoutes';
-import { registerDataResolverRoutes } from './routes/dataResolverRoutes';
 import { registerClusterInfoRoutes } from './routes/clusterInfoRoutes';
 import { registerClusterConfigRoutes } from './routes/clusterConfigRoutes';
 import { registerServerConfigRoutes } from './routes/serverConfigRoutes';
@@ -39,10 +38,12 @@ import { registerGettingStartedSampleRoutes } from './routes/gettingStartedSampl
 import { registerAirGapSampleRoutes } from './routes/airgapSampleRoutes';
 import { registerSystemRoutes } from './routes/systemRoutes';
 import { registerWebSocketRoutes } from './routes/websocketRoutes';
+import { registerDataResolverRoutes } from './routes/dataResolverRoutes';
 import { setupSwagger } from './config/swagger';
 import { logger } from './utils/logger';
 import { exec } from 'child_process';
 import websocketPlugin from '@fastify/websocket';
+import { CheClusterService } from './services/CheClusterService';
 
 // Load environment variables
 dotenv.config();
@@ -240,6 +241,18 @@ async function start() {
 
     logger.info(`Che Server swagger is running on "http://localhost:${PORT}/swagger".`);
     logger.info(`\n🚀 Eclipse Che Next API Server (Fastify) is running on port ${PORT}`);
+    
+    // Initialize CheClusterService AFTER server starts (async, non-blocking)
+    // This allows health checks to succeed while we load the CheCluster CR in the background
+    setTimeout(async () => {
+      try {
+        const cheClusterService = CheClusterService.getInstance();
+        await cheClusterService.initialize();
+        logger.info('CheClusterService initialized successfully');
+      } catch (error) {
+        logger.warn({ error }, 'Failed to initialize CheClusterService, will use fallback configuration from environment variables');
+      }
+    }, 100); // Small delay to ensure server is fully ready
     logger.info(`\n📚 API Documentation:`);
     logger.info(`   Swagger UI: http://localhost:${PORT}/swagger`);
     logger.info(`   OpenAPI JSON: http://localhost:${PORT}/swagger/json`);
@@ -346,13 +359,44 @@ process.on('SIGUSR2', () => shutdown('SIGUSR2')); // Nodemon uses SIGUSR2
 
 // Uncaught exception handler
 process.on('uncaughtException', err => {
-  logger.error({ error: err }, 'Uncaught exception');
+  logger.error(
+    {
+      error: err,
+      message: err?.message || 'No message',
+      stack: err?.stack || 'No stack trace',
+      type: typeof err,
+      stringified: JSON.stringify(err),
+    },
+    'Uncaught exception - DETAILED',
+  );
+  
+  // Don't shutdown on empty errors - they're likely handled elsewhere
+  if (!err || (typeof err === 'object' && Object.keys(err).length === 0)) {
+    logger.warn('Ignoring uncaught exception with empty error object');
+    return;
+  }
+  
   shutdown('uncaughtException');
 });
 
 // Unhandled rejection handler
 process.on('unhandledRejection', (reason, promise) => {
-  logger.error({ reason, promise }, 'Unhandled rejection');
+  logger.error(
+    {
+      reason,
+      reasonType: typeof reason,
+      reasonStringified: JSON.stringify(reason),
+      promise,
+    },
+    'Unhandled rejection - DETAILED',
+  );
+  
+  // Don't shutdown on empty rejections
+  if (!reason || (typeof reason === 'object' && Object.keys(reason).length === 0)) {
+    logger.warn('Ignoring unhandled rejection with empty reason');
+    return;
+  }
+  
   shutdown('unhandledRejection');
 });
 

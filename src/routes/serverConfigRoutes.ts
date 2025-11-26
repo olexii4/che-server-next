@@ -10,10 +10,12 @@
  *   Red Hat, Inc. - initial API and implementation
  */
 
+import * as k8s from '@kubernetes/client-node';
 import { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 
 import { ServerConfig } from '../models/ClusterModels';
 import { DashboardEnvironmentService } from '../services/DashboardEnvironmentService';
+import { CheClusterService } from '../services/CheClusterService';
 
 /**
  * Register server config routes
@@ -111,7 +113,7 @@ export async function registerServerConfigRoutes(fastify: FastifyInstance): Prom
 }
 
 /**
- * Build server config from environment variables and dashboard environment service
+ * Build server config from environment variables, dashboard environment service, and CheCluster CR
  */
 function buildServerConfig(): ServerConfig {
   const cheNamespace = process.env.CHE_NAMESPACE || 'eclipse-che';
@@ -158,15 +160,27 @@ function buildServerConfig(): ServerConfig {
   const startTimeout = parseInt(process.env.CHE_WORKSPACE_START_TIMEOUT || '300000', 10); // 5 minutes default
   const axiosRequestTimeout = parseInt(process.env.CHE_AXIOS_REQUEST_TIMEOUT || '30000', 10); // 30 seconds default
 
-  // Parse devfile registry
-  const disableInternalRegistry = process.env.CHE_DISABLE_INTERNAL_REGISTRY === 'true' || false;
-  const externalDevfileRegistriesStr = process.env.CHE_EXTERNAL_DEVFILE_REGISTRIES || '[]';
-
+  // Parse devfile registry - prioritize CheCluster CR over environment variables
+  const cheClusterService = CheClusterService.getInstance();
+  
+  let disableInternalRegistry = process.env.CHE_DISABLE_INTERNAL_REGISTRY === 'true' || false;
   let externalDevfileRegistries: Array<{ url: string }> = [];
-  try {
-    externalDevfileRegistries = JSON.parse(externalDevfileRegistriesStr);
-  } catch (e) {
-    externalDevfileRegistries = [];
+  
+  // Try to get from CheCluster CR first (synchronous, uses cached data)
+  const crExternalRegistries = cheClusterService.getExternalDevfileRegistries();
+  const crDisableInternal = cheClusterService.getDisableInternalRegistry();
+  
+  if (crExternalRegistries.length > 0) {
+    externalDevfileRegistries = crExternalRegistries;
+    disableInternalRegistry = crDisableInternal;
+  } else {
+    // Fallback to environment variables
+    const externalDevfileRegistriesStr = process.env.CHE_EXTERNAL_DEVFILE_REGISTRIES || '[]';
+    try {
+      externalDevfileRegistries = JSON.parse(externalDevfileRegistriesStr);
+    } catch (e) {
+      externalDevfileRegistries = [];
+    }
   }
 
   // Parse PVC strategy
@@ -273,7 +287,15 @@ function buildServerConfig(): ServerConfig {
   if (containerRunEnabled) {
     serverConfig.containerRun = {
       openShiftSecurityContextConstraint: process.env.CHE_CONTAINER_RUN_OSC || undefined,
-      containerRunConfiguration: containerRunConfiguration,
+      containerRunConfiguration,
+    };
+  }
+
+  // Ensure containerRun always exists with empty config if not set
+  // The dashboard expects this object to always be present
+  if (!serverConfig.containerRun) {
+    serverConfig.containerRun = {
+      containerRunConfiguration: {},
     };
   }
 

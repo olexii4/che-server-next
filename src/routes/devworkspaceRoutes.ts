@@ -56,13 +56,7 @@ export async function registerDevWorkspaceRoutes(fastify: FastifyInstance): Prom
           required: ['namespace'],
         },
         security: [{ BearerAuth: [] }],
-        response: {
-          200: {
-            description: 'List of DevWorkspaces',
-            type: 'array',
-            items: { type: 'object' },
-          },
-        },
+        // Don't define response schema to avoid Fastify stripping fields from Kubernetes objects
       },
       onRequest: [fastify.authenticate, fastify.requireAuth],
     },
@@ -87,12 +81,8 @@ export async function registerDevWorkspaceRoutes(fastify: FastifyInstance): Prom
         const kubeConfig = getKubeConfig(serviceAccountToken);
         const service = new DevWorkspaceService(kubeConfig);
 
-        const devworkspaces = await service.listInNamespace(namespace);
-        // Send as JSON string to ensure proper serialization
-        return reply
-          .code(200)
-          .header('Content-Type', 'application/json')
-          .send(JSON.stringify(devworkspaces));
+        const devworkspacesList = await service.listInNamespace(namespace);
+        return reply.code(200).send(devworkspacesList);
       } catch (error: any) {
         fastify.log.error({ error }, 'Error listing DevWorkspaces');
         return reply.code(error.statusCode || 500).send({

@@ -176,7 +176,8 @@ export class WebSocketManager {
         {},
         (phase: string, obj: any) => {
           try {
-            if (connection.readyState === WebSocket.OPEN) {
+            // WebSocket.OPEN === 1 (use numeric constant for Node.js ws library)
+            if (connection.readyState === 1) {
               connection.send(
                 JSON.stringify({
                   channel: 'devWorkspace',
@@ -188,7 +189,10 @@ export class WebSocketManager {
               );
             }
           } catch (err) {
-            logger.error({ error: err }, 'Error in devWorkspace watch handler');
+            logger.error({ 
+              error: err instanceof Error ? err.message : String(err),
+              stack: err instanceof Error ? err.stack : undefined,
+            }, 'Error in devWorkspace watch handler');
           }
         },
         (err: any) => {
@@ -244,7 +248,7 @@ export class WebSocketManager {
         {},
         (phase: string, obj: any) => {
           try {
-            if (connection.readyState === WebSocket.OPEN) {
+            if (connection.readyState === 1) {
               connection.send(
                 JSON.stringify({
                   channel: 'pod',
@@ -256,7 +260,10 @@ export class WebSocketManager {
               );
             }
           } catch (err) {
-            logger.error({ error: err }, 'Error in pod watch handler');
+            logger.error({ 
+              error: err instanceof Error ? err.message : String(err),
+              stack: err instanceof Error ? err.stack : undefined,
+            }, 'Error in pod watch handler');
           }
         },
         (err: any) => {
@@ -312,7 +319,7 @@ export class WebSocketManager {
         {},
         (phase: string, obj: any) => {
           try {
-            if (connection.readyState === WebSocket.OPEN) {
+            if (connection.readyState === 1) {
               connection.send(
                 JSON.stringify({
                   channel: 'event',
@@ -324,7 +331,10 @@ export class WebSocketManager {
               );
             }
           } catch (err) {
-            logger.error({ error: err }, 'Error in event watch handler');
+            logger.error({ 
+              error: err instanceof Error ? err.message : String(err),
+              stack: err instanceof Error ? err.stack : undefined,
+            }, 'Error in event watch handler');
           }
         },
         (err: any) => {
@@ -391,7 +401,7 @@ export class WebSocketManager {
       // Pipe logs to WebSocket
       if (logStream && typeof (logStream as any).on === 'function') {
         (logStream as any).on('data', (chunk: Buffer) => {
-          if (connection.readyState === WebSocket.OPEN) {
+          if (connection.readyState === 1) {
             connection.send(
               JSON.stringify({
                 channel: 'logs',
@@ -414,7 +424,7 @@ export class WebSocketManager {
   }
 
   private sendError(connection: WebSocket, channel: Channel, message: string): void {
-    if (connection.readyState === WebSocket.OPEN) {
+    if (connection.readyState === 1) {
       connection.send(
         JSON.stringify({
           channel,

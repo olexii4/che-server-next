@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright (c) 2018-2025 Red Hat, Inc.
  * This program and the accompanying materials are made
  * available under the terms of the Eclipse Public License 2.0
@@ -11,54 +11,46 @@
  */
 
 import { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
-import { axiosInstance, axiosInstanceNoCert } from '../helpers/getCertificateAuthority';
-import { AxiosResponse } from 'axios';
+import axios from 'axios';
+import { logger } from '../utils/logger';
 
-const config = {
-  headers: { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Methods': 'GET' },
-};
-
-interface DataResolverBody {
+interface DataResolverRequest {
   url: string;
 }
 
 /**
- * Register the data resolver route
- * This endpoint acts as a proxy to fetch data from external URLs,
- * solving CORS issues and handling self-signed certificates
+ * Register Data Resolver routes
+ *
+ * Provides a server-side proxy to fetch external URLs, bypassing CORS restrictions.
+ * Used by the dashboard to fetch devfile metadata from external registries.
  */
-export async function registerDataResolverRoutes(fastify: FastifyInstance) {
-  fastify.post<{ Body: DataResolverBody }>(
+export async function registerDataResolverRoutes(fastify: FastifyInstance): Promise<void> {
+  /**
+   * POST /api/data/resolver
+   *
+   * Proxy endpoint to fetch external URLs
+   */
+  fastify.post<{ Body: DataResolverRequest }>(
     '/data/resolver',
     {
       schema: {
-        tags: ['Data Resolver'],
-        description: 'Resolve data from external URLs (proxy endpoint to solve CORS issues)',
+        tags: ['data-resolver'],
+        summary: 'Resolve external data',
+        description: 'Fetch data from an external URL (CORS proxy)',
         body: {
           type: 'object',
-          required: ['url'],
           properties: {
             url: {
               type: 'string',
-              description: 'URL to fetch data from',
+              description: 'The URL to fetch',
             },
           },
+          required: ['url'],
         },
         response: {
-          200: {
-            description: 'Data fetched successfully',
-            type: 'string',
-          },
+          // 200 response can be any type (array or object), so we don't define a schema
           400: {
             description: 'Bad Request',
-            type: 'object',
-            properties: {
-              error: { type: 'string' },
-              message: { type: 'string' },
-            },
-          },
-          404: {
-            description: 'Resource not found',
             type: 'object',
             properties: {
               error: { type: 'string' },
@@ -73,46 +65,56 @@ export async function registerDataResolverRoutes(fastify: FastifyInstance) {
               message: { type: 'string' },
             },
           },
+          503: {
+            description: 'Service Unavailable',
+            type: 'object',
+            properties: {
+              error: { type: 'string' },
+              message: { type: 'string' },
+            },
+          },
         },
       },
     },
-    async (request: FastifyRequest<{ Body: DataResolverBody }>, reply: FastifyReply) => {
+    async (request: FastifyRequest<{ Body: DataResolverRequest }>, reply: FastifyReply) => {
       const { url } = request.body;
 
       if (!url) {
         return reply.code(400).send({
           error: 'Bad Request',
-          message: 'URL parameter is required',
+          message: 'URL is required',
         });
       }
 
       try {
-        let response: AxiosResponse;
-        try {
-          // First try without certificate validation
-          response = await axiosInstanceNoCert.get(url, config);
-        } catch (error: any) {
-          // If 404, throw immediately (resource doesn't exist)
-          if (error.response?.status === 404) {
-            throw error;
-          }
-          // For other errors (like cert issues), retry with cert-enabled instance
-          response = await axiosInstance.get(url, config);
-        }
-        return reply.code(200).send(response.data);
+        logger.info({ url }, 'Resolving external data');
+
+        // Fetch the external URL
+        const response = await axios.get(url, {
+          timeout: 30000, // 30 seconds
+          validateStatus: (status) => status < 500, // Accept any status < 500
+        });
+
+        logger.info({ url, status: response.status, dataLength: JSON.stringify(response.data).length }, 'Successfully resolved external data');
+
+        // Always return 200 for successful proxy requests, even if the upstream returns 404
+        // The dashboard will handle the response body appropriately
+        // Use type() and raw JSON.stringify to preserve arrays (Fastify serialization can convert arrays to objects)
+        return reply.type('application/json').send(JSON.stringify(response.data));
       } catch (error: any) {
-        if (error.response) {
-          // Forward the error response from the external server
-          return reply.code(error.response.status).send({
-            error: error.response.statusText || 'Error',
-            message:
-              error.response.data?.message || error.message || 'Failed to fetch data from URL',
+        logger.error({ error: error.message, url, status: error.response?.status }, 'Error resolving external data');
+
+        // Handle network errors - still return error status codes for actual failures
+        if (error.code === 'ECONNREFUSED' || error.code === 'ENOTFOUND' || error.code === 'ETIMEDOUT') {
+          return reply.code(503).send({
+            error: 'Service Unavailable',
+            message: `Failed to connect to ${url}: ${error.message}`,
           });
         }
-        // Network or other errors
+
         return reply.code(500).send({
           error: 'Internal Server Error',
-          message: `Failed to fetch data from URL: ${error.message}`,
+          message: error.message || 'Failed to resolve data',
         });
       }
     },

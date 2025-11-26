@@ -33,7 +33,7 @@ export class DevWorkspaceService {
   /**
    * List all DevWorkspaces in a namespace
    */
-  async listInNamespace(namespace: string): Promise<DevWorkspace[]> {
+  async listInNamespace(namespace: string): Promise<DevWorkspaceList> {
     try {
       const response = await this.customApi.listNamespacedCustomObject(
         DEVWORKSPACE_CRD.GROUP,
@@ -43,7 +43,8 @@ export class DevWorkspaceService {
       );
 
       const list = response.body as DevWorkspaceList;
-      return list.items || [];
+      // Return the full list object (with items and metadata) to match Kubernetes API format
+      return list;
     } catch (error) {
       logger.error({ error, namespace }, 'Error listing DevWorkspaces');
       throw error;
