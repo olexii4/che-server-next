@@ -48,6 +48,7 @@ export async function registerWorkspacePreferencesRoutes(fastify: FastifyInstanc
           200: {
             description: 'Workspace preferences',
             type: 'object',
+            additionalProperties: true,
             properties: {
               'skip-authorisation': {
                 type: 'array',
