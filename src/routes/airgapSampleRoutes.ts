@@ -12,28 +12,29 @@
 
 import { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 
-import { logger } from '../utils/logger';
-
 /**
  * Register Air Gap Sample routes
  *
- * These routes provide sample projects for air-gapped environments.
- * In che-server-next, we return empty array as samples are managed externally.
+ * Provides air-gapped sample projects for offline devfile registry.
+ * Route: GET /api/airgap-sample
  */
 export async function registerAirGapSampleRoutes(fastify: FastifyInstance): Promise<void> {
   /**
-   * GET /api/airgap-sample
-   * List air gap samples
+   * GET /airgap-sample
+   *
+   * List air-gapped sample projects.
+   * In che-server-next, samples are managed externally, so this returns an empty array.
    */
   fastify.get(
     '/airgap-sample',
     {
       schema: {
-        description: 'List air gap sample projects',
-        tags: ['Air Gap Samples'],
+        tags: ['airgap-sample'],
+        summary: 'List air-gapped samples',
+        description: 'Returns air-gapped sample projects (empty in che-server-next)',
         response: {
           200: {
-            description: 'List of air gap samples (empty in che-server-next)',
+            description: 'List of air-gapped samples',
             type: 'array',
             items: {
               type: 'object',
@@ -43,19 +44,9 @@ export async function registerAirGapSampleRoutes(fastify: FastifyInstance): Prom
       },
     },
     async (request: FastifyRequest, reply: FastifyReply) => {
-      try {
-        // In che-server-next, air gap samples are not used
-        // The dashboard will fall back to external registries
-        logger.info('Air gap samples requested - returning empty array');
-        return reply.code(200).send([]);
-      } catch (error) {
-        logger.error({ error }, 'Error listing air gap samples');
-        return reply.code(500).send({
-          error: 'Internal Server Error',
-          message: 'Failed to list air gap samples',
-        });
-      }
+      // Air-gapped samples are now managed externally in che-server-next
+      // Return empty array for backward compatibility
+      return reply.code(200).send([]);
     },
   );
 }
-

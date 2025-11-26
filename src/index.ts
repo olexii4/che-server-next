@@ -12,7 +12,6 @@
 
 import Fastify, { FastifyInstance } from 'fastify';
 import fastifyCors from '@fastify/cors';
-import fastifyWebsocket from '@fastify/websocket';
 import dotenv from 'dotenv';
 import { authenticate, requireAuth } from './middleware/auth';
 import { registerNamespaceRoutes } from './routes/namespaceRoutes';
@@ -38,12 +37,10 @@ import { registerDockerConfigRoutes } from './routes/dockerConfigRoutes';
 import { registerWorkspacePreferencesRoutes } from './routes/workspacePreferencesRoutes';
 import { registerGettingStartedSampleRoutes } from './routes/gettingStartedSampleRoutes';
 import { registerAirGapSampleRoutes } from './routes/airgapSampleRoutes';
-import { registerWebSocketRoutes } from './routes/websocketRoutes';
 import { registerSystemRoutes } from './routes/systemRoutes';
 import { setupSwagger } from './config/swagger';
 import { logger } from './utils/logger';
 import { exec } from 'child_process';
-import { DashboardEnvironmentService } from './services/DashboardEnvironmentService';
 
 // Load environment variables
 dotenv.config();
@@ -104,9 +101,6 @@ async function start() {
     fastify.decorate('authenticate', authenticate);
     fastify.decorate('requireAuth', requireAuth);
 
-    // Register WebSocket support
-    await fastify.register(fastifyWebsocket);
-
     // Setup Swagger/OpenAPI documentation
     await setupSwagger(fastify);
 
@@ -139,7 +133,7 @@ async function start() {
       },
     );
 
-    // Register route modules with /api prefix (gateway forwards full path including /api)
+    // Register route modules with /api prefix (matches Java implementation)
     await fastify.register(
       async apiInstance => {
         // Root API endpoint - returns API info (no auth required for CORS preflight, hidden from Swagger)
@@ -198,7 +192,6 @@ async function start() {
         await registerWorkspacePreferencesRoutes(apiInstance);
         await registerGettingStartedSampleRoutes(apiInstance);
         await registerAirGapSampleRoutes(apiInstance);
-        await registerWebSocketRoutes(apiInstance);
         await registerSystemRoutes(apiInstance);
       },
       { prefix: '/api' },
@@ -235,12 +228,6 @@ async function start() {
         message: `Route ${request.method} ${request.url} not found`,
       });
     });
-
-    // Initialize dashboard environment service (backward compatibility)
-    logger.info('Initializing dashboard environment service...');
-    const dashboardEnvService = DashboardEnvironmentService.getInstance();
-    await dashboardEnvService.initialize();
-    logger.info('Dashboard environment service initialized');
 
     // Start the server
     await fastify.listen({ port: PORT, host: HOST });
